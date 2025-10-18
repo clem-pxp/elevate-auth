@@ -1,26 +1,398 @@
-@import "tailwindcss";
+/* ==========================================
+   ⚙️ TAILWIND IMPORTS
+   ========================================== */
 
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+
+
+/* ==========================================
+   🔤 CUSTOM FONTS
+   ========================================== */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist[wght].woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TWK Lausanne';
+  src: url('/fonts/TWKLausanne-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ==========================================
+   📐 SCALING FONT SYSTEM
+   ========================================== */
+
+/* Desktop (1440px design) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --size-unit: 16;
+  --size-container-ideal: 1440;
+  --size-container-min: 1024px;  /* ⬅️ Aligné avec --breakpoint-lg */
+  --size-container-max: 1440px;
+  --size-container: clamp(var(--size-container-min), 100vw, var(--size-container-max));
+  --size-font: calc(var(--size-container) / (var(--size-container-ideal) / var(--size-unit)));
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+/* Tablet (834px design) - entre md (768px) et lg (1024px) */
+@media screen and (max-width: 1023px) {  /* ⬅️ juste sous lg */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --size-container-ideal: 834;
+    --size-container-min: 768px;  /* ⬅️ Aligné avec --breakpoint-md */
+    --size-container-max: 1023px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Mobile Landscape (550px design) - entre sm (550px) et md (768px) */
+@media screen and (max-width: 767px) {  /* ⬅️ juste sous md */
+  :root {
+    --size-container-ideal: 550;
+    --size-container-min: 550px;  /* ⬅️ Aligné avec --breakpoint-sm */
+    --size-container-max: 767px;
+  }
+}
+
+/* Mobile Portrait (390px design) - en dessous de sm (550px) */
+@media screen and (max-width: 549px) {  /* ⬅️ juste sous sm */
+  :root {
+    --size-container-ideal: 390;
+    --size-container-min: 320px;  /* ⬅️ Aligné avec --breakpoint-xs */
+    --size-container-max: 549px;
+  }
+}
+
+/* ==========================================
+   🎨 DESIGN TOKENS (@theme)
+   ========================================== */
+
+@theme {
+  /* --- Fonts --- */
+  --font-*: initial;
+
+  --font-heading: 'TWK Lausanne', sans-serif;
+  --font-sans: 'Geist', sans-serif;
+  --font-mono: 'Geist', monospace;
+
+  /* --- Tracking --- */
+  --tracking-*: initial;
+  --tracking-tight: -0.027em;
+  --tracking-base: -0.012em;
+
+  /* --- Line Heights --- */
+  --leading-*: initial;
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-base: 1.4;
+
+  /* --- Font Weights --- */
+  --font-400: 400;
+  --font-450: 450;
+  --font-500: 500;
+  --font-600: 600;
+
+  /* --- Text Sizes --- */
+  --text-*: initial;
+  --text-tiny: 0.625em;
+  --text-xs: 0.75em;
+  --text-sm: 0.875em;
+  --text-base: 1em;
+  --text-lg: 1.125em;
+  --text-xl: 1.25em;
+  --text-2xl: 1.5em;
+  --text-3xl: 1.875em;
+
+  /* --- Breakpoints --- */
+  --breakpoint-*: initial;
+  --breakpoint-xs: 320px;
+  --breakpoint-sm: 550px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1200px;
+
+  /* --- Border Radius --- */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* --- Shadows --- */
+  --shadow-card: 0px 0px 0px 1px rgba(9, 23, 78, 0.04), 0px 1px 1px -0.5px rgba(9, 23, 78, 0.04), 0px 3px 3px -1.5px rgba(9, 23, 78, 0.04), 0px 6px 6px -3px rgba(9, 23, 78, 0.04),
+    0px 12px 12px -6px rgba(9, 23, 78, 0.04), 0px 24px 24px -12px rgba(9, 23, 78, 0.04), 0px 32px 32px -16px rgba(9, 23, 78, 0.04), 0px 44px 44px -16px rgba(9, 23, 78, 0.06);
+  --shadow-base: 0 3px 6px -2px rgba(0, 0, 0, 0.02), 0 1px 1px 0 rgba(0, 0, 0, 0.04);
+  --shadow-btn: 9px 7px 17.3px 0 rgba(26, 46, 44, 0.17);
+  --shadow-pink: 0px 4px 12px 0px rgba(227, 182, 194, 0.5), 0px 1px 1px 0.25px rgba(255, 255, 255, 0.05) inset, 0px 2px 11.8px 0px rgba(255, 255, 255, 0.1) inset, 0px 0px 0px 1px #e3b6c2;
+  --shadow-green: 0px 4px 12px 0px rgba(26, 46, 44, 0.5), 0px 1px 1px 0.25px rgba(255, 255, 255, 0.05) inset, 0px 2px 11.8px 0px rgba(255, 255, 255, 0.1) inset, 0px 0px 0px 1px #1a2e2c;
+  --shadow-gray: 0px 4px 12px 0px rgba(178, 184, 178, 0.5), 0px 1px 1px 0.25px rgba(255, 255, 255, 0.05) inset, 0px 2px 11.8px 0px rgba(255, 255, 255, 0.1) inset, 0px 0px 0px 1px #b2b8b2;
+  
+
+  /* --- Brand Colors --- */
+  --color-brand: #1a2e2c;
+  --color-mint: #EEF4ED;
+  --color-pink: #e3b6c2;
+  --color-app: #fdfdfd;
+
+  /* --- Semantic Colors (from CSS variables) --- */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* --- Chart Colors --- */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* --- Sidebar Colors --- */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+@layer utilities {
+  /* ==========================================
+     📝 HEADING UTILITIES
+     ========================================== */
+
+  /* --- H1 --- */
+  .sub-h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2.5em, 5vw, 4em); /* 40px → 64px */
+    font-weight: var(--font-600);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /* --- H2 --- */
+  .sub-h2 {
+    font-family: var(--font-heading);
+    font-size: clamp(2em, 4vw, 3em); /* 32px → 48px */
+    font-weight: var(--font-600);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /* --- H3 --- */
+  .sub-h3 {
+    font-family: var(--font-heading);
+    font-size: clamp(1.5em, 3vw, 2em); /* 24px → 32px */
+    font-weight: var(--font-600);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /* --- H4 --- */
+  .sub-h4 {
+    font-family: var(--font-heading);
+    font-size: clamp(1.25em, 2.5vw, 1.5em); /* 20px → 24px */
+    font-weight: var(--font-600);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /* --- H5 --- */
+  .sub-h5 {
+    font-family: var(--font-heading);
+    font-size: clamp(1.125em, 2vw, 1.25em); /* 18px → 20px */
+    font-weight: var(--font-600);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /* --- H6 --- */
+  .sub-h6 {
+    font-family: var(--font-heading);
+    font-size: 1em; /* 16px */
+    font-weight: var(--font-600);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+}
+
+/* ==========================================
+   🌈 COLOR SCHEMES
+   ========================================== */
+
+/* --- Light Mode (default) --- */
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* --- Dark Mode --- */
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ==========================================
+   🎯 BASE STYLES
+   ========================================== */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-size: var(--size-font);
+    font-family: var(--font-sans);
+  }
+
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* ==========================================
+   🎪 COMPONENT STYLES
+   ========================================== */
+
+/* --- Embla Carousel --- */
+.embla {
+  overflow: visible;
+}
+
+.embla__container {
+  display: flex;
+  gap: 0rem;
+}
+
+.embla__slide {
+  min-width: 0;
+  margin-right: 1rem;
+}
+
+.embla__dots {
+  margin-top: 1rem;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.embla__dot {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: transparent;
+  touch-action: manipulation;
+  display: inline-flex;
+  text-decoration: none;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.4);
+  transition: background-color 0.2s ease-in-out;
+}
+
+.embla__dot--selected {
+  background-color: white;
+}
+
+/* ==========================================
+   🔧 UTILITY CLASSES
+   ========================================== */
+
+/* --- Hide Scrollbar --- */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
