@@ -23,6 +23,7 @@ interface InscriptionData {
 interface InscriptionStore {
   currentStep: number;
   completedSteps: number[];
+  maxStepReached: number; // ⬅️ AJOUTER
   inscriptionData: InscriptionData;
   
   setCurrentStep: (step: number) => void;
@@ -55,6 +56,7 @@ const initialData: InscriptionData = {
 export const useInscriptionStore = create<InscriptionStore>((set, get) => ({
   currentStep: 1,
   completedSteps: [],
+  maxStepReached: 1, // ⬅️ AJOUTER
   inscriptionData: initialData,
   
   setCurrentStep: (step) => set({ currentStep: step }),
@@ -64,6 +66,7 @@ export const useInscriptionStore = create<InscriptionStore>((set, get) => ({
       return {
         completedSteps: [...state.completedSteps, step],
         currentStep: step + 1,
+        maxStepReached: Math.max(state.maxStepReached, step + 1),
       };
     }
     return { currentStep: step + 1 };
