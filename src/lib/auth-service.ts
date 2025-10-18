@@ -1,13 +1,9 @@
 import { 
   createUserWithEmailAndPassword, 
-  fetchSignInMethodsForEmail,
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
-
-
-
 
 import { auth, db } from './firebase';
 
@@ -25,7 +21,6 @@ interface UserData {
 
 export async function checkEmailExists(email: string): Promise<boolean> {
   try {
-    // Vérifier dans Firestore au lieu de Auth
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('email', '==', email));
     const querySnapshot = await getDocs(q);
@@ -40,65 +35,6 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   }
 }
 
-export async function createUserAccount(data: UserData, password?: string) {
-  try {
-    let userId: string;
-    
-    // Si pas de mot de passe, l'utilisateur vient de Google (déjà connecté)
-    if (!password) {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('Utilisateur non connecté');
-      }
-      userId = currentUser.uid;
-      console.log('✅ Utilisateur Google déjà connecté:', userId);
-    } else {
-      // Créer le compte avec email/password
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        data.email,
-        password
-      );
-      userId = userCredential.user.uid;
-      console.log('✅ Compte Firebase créé:', userId);
-    }
-
-    // Sauvegarder les données dans Firestore
-    await setDoc(doc(db, 'users', userId), {
-      nom: data.nom,
-      prenom: data.prenom,
-      email: data.email,
-      phone: data.phone,
-      birthday: data.birthday?.toISOString() || null,
-      planId: data.planId,
-      planName: data.planName,
-      planPrice: data.planPrice,
-      paymentIntentId: data.paymentIntentId,
-      authProvider: password ? 'email' : 'google', // ⬅️ AJOUTER
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    console.log('✅ Données sauvegardées dans Firestore');
-    return { success: true, userId };
-  } catch (error: any) {
-    console.error('❌ Erreur création compte:', error);
-    
-    let errorMessage = 'Une erreur est survenue';
-    
-    if (error.code === 'auth/email-already-in-use') {
-      errorMessage = 'Cet email est déjà utilisé';
-    } else if (error.code === 'auth/weak-password') {
-      errorMessage = 'Le mot de passe est trop faible';
-    } else if (error.code === 'auth/invalid-email') {
-      errorMessage = 'Email invalide';
-    }
-
-    return { success: false, error: errorMessage };
-  }
-}
-
-
 export async function signInWithGoogle() {
   try {
     const provider = new GoogleAuthProvider();
@@ -110,20 +46,83 @@ export async function signInWithGoogle() {
       success: true,
       user: result.user,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Google Sign-In error:', error);
     
     let errorMessage = 'Erreur lors de la connexion';
     
-    if (error.code === 'auth/popup-closed-by-user') {
-      errorMessage = 'Connexion annulée';
-    } else if (error.code === 'auth/account-exists-with-different-credential') {
-      errorMessage = 'Un compte existe déjà avec cet email';
+    if (error && typeof error === 'object' && 'code' in error) {
+      const firebaseError = error as { code: string };
+      
+      if (firebaseError.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'Connexion annulée';
+      } else if (firebaseError.code === 'auth/account-exists-with-different-credential') {
+        errorMessage = 'Un compte existe déjà avec cet email';
+      }
     }
     
     return {
       success: false,
       error: errorMessage,
     };
+  }
+}
+
+export async function createUserAccount(data: UserData, password?: string) {
+  try {
+    let userId: string;
+    
+    if (!password) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Utilisateur non connecté');
+      }
+      userId = currentUser.uid;
+      console.log('✅ Utilisateur Google déjà connecté:', userId);
+    } else {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        data.email,
+        password
+      );
+      userId = userCredential.user.uid;
+      console.log('✅ Compte Firebase créé:', userId);
+    }
+
+    await setDoc(doc(db, 'users', userId), {
+      nom: data.nom,
+      prenom: data.prenom,
+      email: data.email,
+      phone: data.phone,
+      birthday: data.birthday?.toISOString() || null,
+      planId: data.planId,
+      planName: data.planName,
+      planPrice: data.planPrice,
+      paymentIntentId: data.paymentIntentId,
+      authProvider: password ? 'email' : 'google',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    console.log('✅ Données sauvegardées dans Firestore');
+    return { success: true, userId };
+  } catch (error: unknown) {
+    console.error('❌ Erreur création compte:', error);
+    
+    let errorMessage = 'Une erreur est survenue';
+    
+    if (error && typeof error === 'object' && 'code' in error) {
+      const firebaseError = error as { code: string };
+      
+      if (firebaseError.code === 'auth/email-already-in-use') {
+        errorMessage = 'Cet email est déjà utilisé';
+      } else if (firebaseError.code === 'auth/weak-password') {
+        errorMessage = 'Le mot de passe est trop faible';
+      } else if (firebaseError.code === 'auth/invalid-email') {
+        errorMessage = 'Email invalide';
+      }
+    }
+
+    return { success: false, error: errorMessage };
   }
 }
