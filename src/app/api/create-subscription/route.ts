@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
       payment_behavior: 'default_incomplete',
       payment_settings: {
         save_default_payment_method: 'on_subscription',
-        payment_method_types: ['card'],
       },
       expand: ['latest_invoice.payment_intent'],
+      automatic_tax: { enabled: false },
     });
 
     logger.debug('Subscription created', { subscriptionId: subscription.id });
@@ -58,29 +58,45 @@ export async function POST(request: NextRequest) {
     const expandedInvoice = invoice as Stripe.Invoice & {
       payment_intent?: Stripe.PaymentIntent | string;
     };
-    const paymentIntent = expandedInvoice.payment_intent;
+    let paymentIntent = expandedInvoice.payment_intent;
+    let clientSecret: string;
 
-    if (!paymentIntent || typeof paymentIntent === 'string') {
-      logger.error('PaymentIntent not found on invoice', { 
-        invoiceId: expandedInvoice.id,
-        subscriptionId: subscription.id 
+    if (paymentIntent && typeof paymentIntent !== 'string') {
+      clientSecret = paymentIntent.client_secret || '';
+      logger.debug('PaymentIntent retrieved from subscription', {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status
       });
-      throw new Error('PaymentIntent not created by Stripe');
-    }
+    } else {
+      logger.warn('No PaymentIntent on invoice, finalizing and retrieving', {
+        invoiceId: expandedInvoice.id
+      });
 
-    const clientSecret = paymentIntent.client_secret;
+      await stripe.invoices.finalizeInvoice(expandedInvoice.id, {
+        auto_advance: false
+      });
+
+      const retrievedInvoice = await stripe.invoices.retrieve(expandedInvoice.id, {
+        expand: ['payment_intent']
+      }) as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent | string };
+
+      const finalizedPaymentIntent = retrievedInvoice.payment_intent as Stripe.PaymentIntent | undefined;
+
+      if (finalizedPaymentIntent && typeof finalizedPaymentIntent !== 'string') {
+        clientSecret = finalizedPaymentIntent.client_secret || '';
+        logger.debug('PaymentIntent from finalized invoice', {
+          paymentIntentId: finalizedPaymentIntent.id
+        });
+      } else {
+        logger.error('Still no PaymentIntent after finalizing');
+        throw new Error('Failed to create PaymentIntent');
+      }
+    }
 
     if (!clientSecret) {
-      logger.error('Client secret missing from PaymentIntent', {
-        paymentIntentId: paymentIntent.id
-      });
+      logger.error('Client secret missing');
       throw new Error('Failed to retrieve client secret');
     }
-
-    logger.debug('PaymentIntent retrieved from subscription', {
-      paymentIntentId: paymentIntent.id,
-      status: paymentIntent.status
-    });
 
     logger.info('Subscription completed', { 
       subscriptionId: subscription.id,
