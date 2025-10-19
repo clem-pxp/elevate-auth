@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
@@ -8,6 +8,34 @@ import { stripePromise } from '@/lib/stripe-client';
 
 export function Step3Payment() {
   const { getInscriptionData, setStep3Data } = useInscriptionStore();
+  const [isReturningFromStripe, setIsReturningFromStripe] = useState(false);
+
+  // Vérifier si on revient de Stripe (dans ce cas, ne pas charger le checkout)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    if (sessionId) {
+      setIsReturningFromStripe(true);
+    }
+  }, []);
+
+  // Si on revient de Stripe, afficher un message de chargement
+  if (isReturningFromStripe) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        className="space-y-6"
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
+            <p className="text-sm text-gray-600">Vérification du paiement...</p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   // Fonction pour récupérer le client secret
   const fetchClientSecret = useCallback(async () => {
