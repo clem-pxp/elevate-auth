@@ -1,16 +1,16 @@
 'use client';
 
-import { useCallback, memo } from 'react';
+import { useCallback } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { stripePromise } from '@/lib/stripe-client';
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 import { postJSON, FetchError } from '@/lib/fetch-utils';
-import { Step3PaymentLoader } from './Step3PaymentLoader';
 
-export const Step3Payment = memo(function Step3Payment() {
+export function Step3Payment() {
   const { getInscriptionData, setStep3Data } = useInscriptionStore();
 
-  // Fonction pour récupérer le client secret avec retry et timeout
+  // Fonction pour récupérer le client secret
   const fetchClientSecret = useCallback(async () => {
     console.log('🔍 fetchClientSecret called');
     const data = getInscriptionData();
@@ -71,13 +71,15 @@ export const Step3Payment = memo(function Step3Payment() {
         </p>
       </div>
 
-      {/* Embedded Checkout - Lazy loaded */}
+      {/* Embedded Checkout */}
       <div id="checkout" className="min-h-[500px]">
-        <Step3PaymentLoader
-          fetchClientSecret={fetchClientSecret}
-          stripePromise={stripePromise}
-        />
+        <EmbeddedCheckoutProvider
+          stripe={stripePromise}
+          options={{ fetchClientSecret }}
+        >
+          <EmbeddedCheckout />
+        </EmbeddedCheckoutProvider>
       </div>
     </motion.div>
   );
-});
+}

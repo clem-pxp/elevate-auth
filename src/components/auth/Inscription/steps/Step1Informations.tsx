@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { signInWithGoogle, checkEmailExists } from '@/lib/auth-service';
@@ -14,7 +14,7 @@ import { VALIDATION_MESSAGES, PASSWORD_MIN_LENGTH } from '@/lib/constants';
 import { Step1Schema } from '@/lib/client-validation';
 
 
-export const Step1Informations = memo(function Step1Informations() {
+export function Step1Informations() {
   const { completeStep, setStep1Data, accountCreated, getInscriptionData } = useInscriptionStore();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -220,4 +220,4 @@ export const Step1Informations = memo(function Step1Informations() {
       </form>
     </motion.div>
   );
-});
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { fetchJSON, FetchError } from '@/lib/fetch-utils';
 import { Step2Schema } from '@/lib/client-validation';
 import type { StripePriceData } from '@/types';
 
-export const Step2Plan = memo(function Step2Plan() {
+export function Step2Plan() {
   const { completeStep, setCurrentStep, setStep2Data, accountCreated, getInscriptionData } = useInscriptionStore();
   
   // Si le compte est créé, charger le plan sélectionné
@@ -163,4 +163,4 @@ export const Step2Plan = memo(function Step2Plan() {
       </div>
     </motion.div>
   );
-});
+}
