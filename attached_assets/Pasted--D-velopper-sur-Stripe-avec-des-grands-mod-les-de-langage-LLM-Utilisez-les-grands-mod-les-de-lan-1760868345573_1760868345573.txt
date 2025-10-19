@@ -1,0 +1,57 @@
+# Développer sur Stripe avec des grands modèles de langage (LLM)
+
+Utilisez les grands modèles de langage (LLM) dans votre flux d'intégration Stripe.
+
+Vous pouvez utiliser des grands modèles de langage (LLM) pour vous aider à créer des intégrations Stripe. Nous fournissons un ensemble d’outils et de bonnes pratiques pour l’utilisation des LLM pendant le développement.
+
+## Documents en texte brut
+
+Vous pouvez accéder à l’ensemble de notre documentation sous forme de fichiers Markdown en texte brut en ajoutant `.md` à la fin de chaque URL. Par exemple, vous pouvez trouver la version en texte brut de cette page à l’adresse [https://docs.stripe.com/building-with-llms.md](https://docs.stripe.com/building-with-llms.md).
+
+Cela aide les outils et les agents d’IA à utiliser notre contenu et vous permet de copier et coller l’intégralité du contenu d’un document dans un LLM. Ce format est préférable au scraping ou à la copie de nos pages HTML et JavaScript pour les raisons suivantes&nbsp;:
+
+- Le texte brut contient moins de tokens de mise en forme.
+- Le contenu qui n’est pas affiché dans la vue par défaut d’une page donnée (il peut par exemple être masqué dans un onglet) est affiché dans la version en texte brut.
+- Les LLM peuvent analyser et comprendre la hiérarchie Markdown.
+
+Nous hébergeons également un fichier [/llms.txt](https://docs.stripe.com/llms.txt.md) qui indique aux outils et agents d’IA comment récupérer les versions de nos pages en texte brut. Le fichier `/llms.txt` est une [norme émergente](https://llmstxt.org/) pour rendre les sites Web et le contenu plus accessibles aux GML.
+
+## Modèle de protocole contextuel (MCP)
+
+The Stripe Model Context Protocol (MCP) defines a set of tools that AI agents can use to interact with the Stripe API and search our knowledge base (including documentation and support articles).
+
+Ces agents éditeur de code détectent automatiquement les outils, qui appellent l’outil concerné. En savoir plus dans notre [documentation MCP](https://docs.stripe.com/mcp.md).
+
+## VS Code AI Assistant
+
+Si vous utilisez Visual Studio Code, vous pouvez installer l’[extension Stripe VS Code](https://docs.stripe.com/stripe-vscode.md) pour accéder à notre assistant IA.
+
+Avec l’assistant IA de Stripe, vous pouvez&nbsp;:
+
+- Obtenir des réponses immédiates sur l’API et les produits Stripe
+- Recevoir des suggestions de code adaptées à votre intégration
+- Poser des questions de suivi pour obtenir des informations plus détaillées
+- Accéder aux connaissances disponibles dans la documentation Stripe et auprès de la communauté des développeurs Stripe
+
+Pour commencer à utiliser l’assistant IA de Stripe&nbsp;:
+
+1. Assurez-vous d’avoir installé l’extension Stripe VS Code.
+1. Accédez à l’interface utilisateur de l’extension Stripe.
+1. Sous **Assistant IA**, cliquez sur **Poser une question**.
+   - Si vous utilisez Copilot, le chat Copilot s’ouvre, dans lequel vous pouvez @-mentionner `@stripe`. Dans le champ de saisie, adressez-vous à l’assistant propre à Stripe en utilisant le paramètre `@stripe` suivi de votre question.
+   - Si vous n’utilisez pas Copilot, une interface utilisateur de chat s’ouvre dans laquelle vous pouvez parler directement au LLM de Stripe.
+
+## Kit de développement Stripe Agent Toolkit
+
+Si vous concevez un logiciel agentique, nous fournissons un SDK pour ajouter Stripe aux fonctionnalités de votre agent. Par exemple, le SDK vous permet&nbsp;:
+
+- Création d’objets Stripe
+- Paiement pour l’utilisation de l’agent
+- À utiliser avec des frameworks populaires tels que le SDK Agent d’OpenAI, le SDK AI de Vercel, Langchain et CrewAI
+
+Pour en savoir plus, consultez notre [documentation sur les agents](https://docs.stripe.com/agents.md).
+
+## See also
+
+- [Stripe pour Visual Studio Code](https://docs.stripe.com/stripe-vscode.md)
+- [Ajouter Stripe à vos workflows agentiques](https://docs.stripe.com/agents.md)
