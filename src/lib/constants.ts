@@ -21,6 +21,9 @@ export const FIREBASE_ERROR_CODES = {
   INVALID_EMAIL: 'auth/invalid-email',
   POPUP_CLOSED: 'auth/popup-closed-by-user',
   ACCOUNT_EXISTS: 'auth/account-exists-with-different-credential',
+  USER_NOT_FOUND: 'auth/user-not-found',
+  WRONG_PASSWORD: 'auth/wrong-password',
+  INVALID_CREDENTIAL: 'auth/invalid-credential',
 } as const;
 
 export const STRIPE_APPEARANCE = {

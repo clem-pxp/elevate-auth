@@ -1,5 +1,6 @@
 import { 
   createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
   User as FirebaseUser
@@ -24,6 +25,44 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   } catch (error) {
     logger.error('Error checking email', error);
     return false;
+  }
+}
+
+export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    
+    logger.info('Email Sign-In successful', { uid: result.user.uid });
+    
+    return {
+      success: true,
+      user: {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+      },
+    };
+  } catch (error) {
+    logger.error('Email Sign-In error', error);
+    
+    let errorMessage = 'Erreur lors de la connexion';
+    
+    if (error && typeof error === 'object' && 'code' in error) {
+      const firebaseError = error as { code: string };
+      
+      if (firebaseError.code === FIREBASE_ERROR_CODES.USER_NOT_FOUND || 
+          firebaseError.code === FIREBASE_ERROR_CODES.WRONG_PASSWORD ||
+          firebaseError.code === FIREBASE_ERROR_CODES.INVALID_CREDENTIAL) {
+        errorMessage = 'Email ou mot de passe incorrect';
+      } else if (firebaseError.code === FIREBASE_ERROR_CODES.INVALID_EMAIL) {
+        errorMessage = 'Email invalide';
+      }
+    }
+    
+    return {
+      success: false,
+      error: errorMessage,
+    };
   }
 }
 

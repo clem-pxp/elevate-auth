@@ -28,9 +28,15 @@ export const Step3Schema = z.object({
   paymentIntentId: z.string().optional(),
 });
 
+export const LoginSchema = z.object({
+  email: z.string().email('Email invalide'),
+  password: z.string().min(1, 'Mot de passe requis'),
+});
+
 export const CompleteDataSchema = Step1Schema.merge(Step2Schema).merge(Step3Schema);
 
 export type Step1Data = z.infer<typeof Step1Schema>;
 export type Step2Data = z.infer<typeof Step2Schema>;
 export type Step3Data = z.infer<typeof Step3Schema>;
+export type LoginData = z.infer<typeof LoginSchema>;
 export type CompleteData = z.infer<typeof CompleteDataSchema>;
