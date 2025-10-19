@@ -12,13 +12,17 @@ export const Step3Payment = memo(function Step3Payment() {
 
   // Fonction pour récupérer le client secret avec retry et timeout
   const fetchClientSecret = useCallback(async () => {
+    console.log('🔍 fetchClientSecret called');
     const data = getInscriptionData();
+    console.log('📦 Inscription data:', { email: data.email, stripePriceId: data.stripePriceId });
 
     if (!data.email || !data.stripePriceId) {
+      console.error('❌ Missing email or stripePriceId');
       throw new Error('Données manquantes pour créer la session de paiement');
     }
 
     try {
+      console.log('📡 Calling /api/create-checkout-session...');
       const responseData = await postJSON<{ clientSecret: string; customerId: string }>(
         '/api/create-checkout-session',
         {
@@ -31,6 +35,8 @@ export const Step3Payment = memo(function Step3Payment() {
         }
       );
 
+      console.log('✅ Checkout session created:', { customerId: responseData.customerId });
+
       // Sauvegarder le customer ID
       if (responseData.customerId) {
         setStep3Data({
@@ -41,6 +47,7 @@ export const Step3Payment = memo(function Step3Payment() {
 
       return responseData.clientSecret;
     } catch (error) {
+      console.error('❌ Checkout session error:', error);
       if (error instanceof FetchError) {
         throw new Error(
           `Impossible de créer la session de paiement: ${error.message}`

@@ -9,6 +9,8 @@ interface Step3PaymentLoaderProps {
 }
 
 export function Step3PaymentLoader({ fetchClientSecret, stripePromise }: Step3PaymentLoaderProps) {
+  console.log('🎨 Step3PaymentLoader rendered');
+  
   return (
     <Suspense
       fallback={
