@@ -29,6 +29,28 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   }
 }
 
+export async function getUserUidByEmail(email: string): Promise<string | null> {
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      logger.debug('No user found for email in Firestore', { email });
+      return null;
+    }
+    
+    const userDoc = querySnapshot.docs[0];
+    const uid = userDoc.id;
+    logger.debug('User UID retrieved from Firestore', { email, uid });
+    
+    return uid;
+  } catch (error) {
+    logger.error('Error getting user UID by email', error);
+    return null;
+  }
+}
+
 export async function checkEmailExistsInAuth(email: string): Promise<boolean> {
   try {
     const signInMethods = await fetchSignInMethodsForEmail(auth, email);
