@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
+import { deleteUser } from 'firebase/auth';
 import { signInWithEmail, signInWithGoogle, checkEmailExists } from '@/lib/auth-service';
+import { auth } from '@/lib/firebase';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,6 +61,20 @@ export function Login() {
         const accountExists = await checkEmailExists(result.user.email || '');
         
         if (!accountExists) {
+          // Supprimer le compte Google qui vient d'être créé pour éviter les doublons
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            try {
+              await deleteUser(currentUser);
+              logger.info('Deleted Google account - user not registered', { 
+                email: result.user.email,
+                uid: currentUser.uid 
+              });
+            } catch (deleteError) {
+              logger.error('Failed to delete Google account', deleteError);
+            }
+          }
+          
           setErrors({ email: 'Aucun compte trouvé. Créez d\'abord un compte avec votre email.' });
           setIsLoading(false);
           return;
