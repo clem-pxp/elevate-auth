@@ -5,11 +5,13 @@ import type { InscriptionData } from '@/types';
 interface InscriptionStore {
   currentStep: number;
   completedSteps: number[];
-  maxStepReached: number; // ⬅️ AJOUTER
+  maxStepReached: number;
+  accountCreated: boolean; // Flag pour savoir si le compte Firebase est créé
   inscriptionData: InscriptionData;
   
   setCurrentStep: (step: number) => void;
   completeStep: (step: number) => void;
+  setAccountCreated: (created: boolean) => void;
   
   // Nouvelles méthodes
   setStep1Data: (data: Partial<InscriptionData>) => void;
@@ -41,6 +43,7 @@ export const useInscriptionStore = create<InscriptionStore>()(
       currentStep: 1,
       completedSteps: [],
       maxStepReached: 1,
+      accountCreated: false,
       inscriptionData: initialData,
       
       setCurrentStep: (step) => set({ currentStep: step }),
@@ -55,6 +58,8 @@ export const useInscriptionStore = create<InscriptionStore>()(
         }
         return { currentStep: step + 1 };
       }),
+      
+      setAccountCreated: (created) => set({ accountCreated: created }),
       
       setStep1Data: (data) => set((state) => ({
         inscriptionData: { ...state.inscriptionData, ...data }
@@ -74,6 +79,7 @@ export const useInscriptionStore = create<InscriptionStore>()(
         currentStep: 1,
         completedSteps: [],
         maxStepReached: 1,
+        accountCreated: false,
         inscriptionData: initialData,
       }),
     }),

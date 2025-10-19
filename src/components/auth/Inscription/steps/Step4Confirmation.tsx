@@ -25,11 +25,11 @@ function getNextPaymentDate(billingPeriodInMonths: number): string {
 }
 
 export function Step4Confirmation() {
-  const { getInscriptionData } = useInscriptionStore();
-  const [isCreating, setIsCreating] = useState(true);
+  const { getInscriptionData, accountCreated, setAccountCreated } = useInscriptionStore();
+  const [isCreating, setIsCreating] = useState(!accountCreated);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<any>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false); // ⬅️ AJOUTER ICI
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // ⬅️ AJOUTER LA FONCTION ICI (avant le useEffect)
   const handleManageSubscription = async () => {
@@ -64,6 +64,13 @@ export function Step4Confirmation() {
     const createAccount = async () => {
       const data = getInscriptionData();
 
+      // Si le compte est déjà créé, ne pas recréer
+      if (accountCreated) {
+        setUserData(data);
+        setIsCreating(false);
+        return;
+      }
+
       // Vérifier que toutes les données sont présentes
       if (!data || !data.email || !data.planId || !data.stripePriceId) {
         setError('Données manquantes. Veuillez recommencer le processus.');
@@ -91,6 +98,7 @@ export function Step4Confirmation() {
 
       if (result.success) {
         setUserData(data);
+        setAccountCreated(true); // Marquer le compte comme créé
         setIsCreating(false);
       } else {
         setError(result.error || 'Une erreur est survenue');
@@ -99,7 +107,7 @@ export function Step4Confirmation() {
     };
 
     createAccount();
-  }, [getInscriptionData]);
+  }, [getInscriptionData, accountCreated, setAccountCreated]);
 
   // État de chargement
   if (isCreating) {

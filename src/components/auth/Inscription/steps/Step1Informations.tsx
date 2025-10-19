@@ -14,15 +14,19 @@ import { VALIDATION_MESSAGES, PASSWORD_MIN_LENGTH } from '@/lib/constants';
 
 
 export function Step1Informations() {
-  const { completeStep, setStep1Data } = useInscriptionStore();
+  const { completeStep, setStep1Data, accountCreated, getInscriptionData } = useInscriptionStore();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Si le compte est créé, charger les données du store
+  const savedData = accountCreated ? getInscriptionData() : null;
+  
   const [formData, setFormData] = useState({
-    nom: '',
-    prenom: '',
-    email: '',
-    phone: '',
-    birthday: undefined as Date | undefined,
-    password: '',
+    nom: savedData?.nom || '',
+    prenom: savedData?.prenom || '',
+    email: savedData?.email || '',
+    phone: savedData?.phone || '',
+    birthday: savedData?.birthday || (undefined as Date | undefined),
+    password: savedData?.password || '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -111,9 +115,15 @@ export function Step1Informations() {
       <div className="flex flex-col gap-2">
         <h1 className="sub-h4">Démarre ton aventure</h1>
         <p className="text-pretty text-sm text-gray-600">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut et massa mi. Aliquam in hendrerit urna.</p>
+        {accountCreated && (
+          <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+            ℹ️ Votre compte est créé. Ces informations ne peuvent plus être modifiées.
+          </p>
+        )}
       </div>
       {/* Google Sign-In Button */}
-      <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
+      {!accountCreated && (
+        <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
         <svg className="size-5 mr-2" viewBox="0 0 24 24">
           <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
           <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -122,9 +132,11 @@ export function Step1Informations() {
         </svg>
         Continuer avec Google
       </Button>
+      )}
 
       {/* Divider */}
-      <div className="relative">
+      {!accountCreated && (
+        <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-200"></div>
         </div>
@@ -132,6 +144,7 @@ export function Step1Informations() {
           <span className="px-2 bg-white text-gray-500">Ou avec email</span>
         </div>
       </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -139,13 +152,13 @@ export function Step1Informations() {
         <div className="grid md:grid-cols-2 grid-cols-1 gap-4">
           <div className="space-y-2">
             <Label htmlFor="nom">Nom</Label>
-            <Input id="nom" value={formData.nom} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} placeholder="John" />
+            <Input id="nom" value={formData.nom} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} placeholder="John" disabled={accountCreated} />
             {errors.nom && <p className="text-xs text-red-600">{errors.nom}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="prenom">Prénom</Label>
-            <Input id="prenom" value={formData.prenom} onChange={(e) => setFormData({ ...formData, prenom: e.target.value })} placeholder="Doe" />
+            <Input id="prenom" value={formData.prenom} onChange={(e) => setFormData({ ...formData, prenom: e.target.value })} placeholder="Doe" disabled={accountCreated} />
             {errors.prenom && <p className="text-xs text-red-600">{errors.prenom}</p>}
           </div>
         </div>
@@ -154,13 +167,13 @@ export function Step1Informations() {
         <div className="grid md:grid-cols-2 grid-cols-1 gap-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="johndoe@gmail.com" />
+            <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="johndoe@gmail.com" disabled={accountCreated} />
             {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="phone">Téléphone</Label>
-            <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+336911065" />
+            <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+336911065" disabled={accountCreated} />
             {errors.phone && <p className="text-xs text-red-600">{errors.phone}</p>}
           </div>
         </div>
@@ -168,21 +181,23 @@ export function Step1Informations() {
         {/* Date de naissance */}
         <div className="space-y-2">
           <Label>Date de naissance</Label>
-          <DatePicker date={formData.birthday} onDateChange={(date) => setFormData({ ...formData, birthday: date })} placeholder="Sélectionner votre date de naissance" />
+          <DatePicker date={formData.birthday} onDateChange={(date) => setFormData({ ...formData, birthday: date })} placeholder="Sélectionner votre date de naissance" disabled={accountCreated} />
           {errors.birthday && <p className="text-xs text-red-600">{errors.birthday}</p>}
         </div>
 
         {/* Mot de passe */}
-        <div className="space-y-2">
-          <Label htmlFor="password">Mot de passe</Label>
-          <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="****************" />
-          <p className="text-xs text-gray-500">Minimum {PASSWORD_MIN_LENGTH} caractères</p>
-          {errors.password && <p className="text-xs text-red-600">{errors.password}</p>}
-        </div>
+        {!accountCreated && (
+          <div className="space-y-2">
+            <Label htmlFor="password">Mot de passe</Label>
+            <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="****************" />
+            <p className="text-xs text-gray-500">Minimum {PASSWORD_MIN_LENGTH} caractères</p>
+            {errors.password && <p className="text-xs text-red-600">{errors.password}</p>}
+          </div>
+        )}
 
         {/* Submit Button */}
         {/* Submit Button */}
-        <Button type="submit" className="w-full shadow-btn rounded-full flex items-center justify-center gap-2" size="lg" variant="default" disabled={isLoading}>
+        <Button type="submit" className="w-full shadow-btn rounded-full flex items-center justify-center gap-2" size="lg" variant="default" disabled={isLoading || accountCreated}>
           {isLoading ? (
             <>
               <LoaderIcon className="size-4 animate-spin" />

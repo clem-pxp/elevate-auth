@@ -9,9 +9,13 @@ import { PLANS_CONFIG } from '@/lib/plans-config';
 import type { StripePriceData } from '@/types';
 
 export function Step2Plan() {
-  const { completeStep, setCurrentStep, setStep2Data } = useInscriptionStore();
-  const [selectedPlan, setSelectedPlan] = useState<string>('annuel');
-  const [openPlan, setOpenPlan] = useState<string>('annuel');
+  const { completeStep, setCurrentStep, setStep2Data, accountCreated, getInscriptionData } = useInscriptionStore();
+  
+  // Si le compte est créé, charger le plan sélectionné
+  const savedData = accountCreated ? getInscriptionData() : null;
+  
+  const [selectedPlan, setSelectedPlan] = useState<string>(savedData?.planId || 'annuel');
+  const [openPlan, setOpenPlan] = useState<string>(savedData?.planId || 'annuel');
   const [stripePrices, setStripePrices] = useState<StripePriceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -103,6 +107,11 @@ export function Step2Plan() {
       <div className="flex flex-col gap-2">
         <h1 className="sub-h4">Choisis ton plan</h1>
         <p className="text-sm text-pretty text-gray-600">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+        {accountCreated && (
+          <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+            ℹ️ Votre compte est créé. Le plan sélectionné ne peut plus être modifié.
+          </p>
+        )}
       </div>
 
       {/* Plans List */}
@@ -113,7 +122,7 @@ export function Step2Plan() {
             {...plan}
             isSelected={selectedPlan === plan.id}
             isOpen={openPlan === plan.id}
-            onSelect={() => handleSelect(plan.id)}
+            onSelect={accountCreated ? () => {} : () => handleSelect(plan.id)}
           />
         ))}
       </div>
@@ -123,7 +132,7 @@ export function Step2Plan() {
         <Button variant="outline" onClick={() => setCurrentStep(1)} className="flex-1">
           Retour
         </Button>
-        <Button onClick={handleContinue} className="flex-1">
+        <Button onClick={handleContinue} className="flex-1" disabled={accountCreated}>
           Continuer
         </Button>
       </div>
