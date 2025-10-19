@@ -37,12 +37,15 @@ function CheckoutForm() {
     if (error) {
       setErrorMessage(error.message || 'Une erreur est survenue');
       setIsLoading(false);
-    } else {
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
       setStep3Data({
         paymentIntentId: paymentIntent.id,
       });
 
       completeStep(3);
+    } else {
+      setErrorMessage('Le paiement n\'a pas pu être confirmé. Veuillez réessayer.');
+      setIsLoading(false);
     }
   };
 
@@ -76,6 +79,7 @@ function CheckoutForm() {
 // Composant parent
 export function Step3Payment() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const { getInscriptionData, setStep3Data } = useInscriptionStore();
 
   useEffect(() => {
@@ -94,13 +98,14 @@ export function Step3Payment() {
       }),
     })
       .then((res) => res.json())
-      .then((data) => {
-        setClientSecret(data.clientSecret);
+      .then((responseData) => {
+        setClientSecret(responseData.clientSecret);
+        setSubscriptionId(responseData.subscriptionId);
         
-        if (data.customerId) {
+        if (responseData.customerId) {
           setStep3Data({
             paymentIntentId: '',
-            stripeCustomerId: data.customerId,
+            stripeCustomerId: responseData.customerId,
           });
         }
       })

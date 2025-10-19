@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       payment_behavior: 'default_incomplete',
       payment_settings: {
         save_default_payment_method: 'on_subscription',
+        payment_method_types: ['card'],
       },
       expand: ['latest_invoice.payment_intent'],
     });
@@ -50,38 +51,36 @@ export async function POST(request: NextRequest) {
     const invoice = subscription.latest_invoice;
 
     if (!invoice || typeof invoice === 'string') {
+      logger.error('Latest invoice not found or not expanded');
       throw new Error('Latest invoice not found');
     }
-
-    let clientSecret: string;
 
     const expandedInvoice = invoice as Stripe.Invoice & {
       payment_intent?: Stripe.PaymentIntent | string;
     };
     const paymentIntent = expandedInvoice.payment_intent;
 
-    if (paymentIntent && typeof paymentIntent !== 'string') {
-      clientSecret = paymentIntent.client_secret || '';
-    } else {
-      const newPaymentIntent = await stripe.paymentIntents.create({
-        amount: expandedInvoice.amount_due,
-        currency: expandedInvoice.currency,
-        customer: customer.id,
-        metadata: {
-          subscription_id: subscription.id,
-          invoice_id: expandedInvoice.id,
-        },
+    if (!paymentIntent || typeof paymentIntent === 'string') {
+      logger.error('PaymentIntent not found on invoice', { 
+        invoiceId: expandedInvoice.id,
+        subscriptionId: subscription.id 
       });
-
-      clientSecret = newPaymentIntent.client_secret || '';
-      logger.debug('Payment Intent created manually', { 
-        paymentIntentId: newPaymentIntent.id 
-      });
+      throw new Error('PaymentIntent not created by Stripe');
     }
+
+    const clientSecret = paymentIntent.client_secret;
 
     if (!clientSecret) {
+      logger.error('Client secret missing from PaymentIntent', {
+        paymentIntentId: paymentIntent.id
+      });
       throw new Error('Failed to retrieve client secret');
     }
+
+    logger.debug('PaymentIntent retrieved from subscription', {
+      paymentIntentId: paymentIntent.id,
+      status: paymentIntent.status
+    });
 
     logger.info('Subscription completed', { 
       subscriptionId: subscription.id,
