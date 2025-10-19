@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { deleteUser } from 'firebase/auth';
-import { signInWithEmail, signInWithGoogle, getUserUidByEmail } from '@/lib/auth-service';
+import { signInWithEmail, signInWithGoogle, getUserUidByEmail, linkGoogleToAccount } from '@/lib/auth-service';
 import { auth } from '@/lib/firebase';
 import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,21 @@ export function Login() {
     password: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // État pour le modal de liaison Google
+  const [linkModal, setLinkModal] = useState<{
+    show: boolean;
+    email: string;
+    credential: any;
+    googleUid: string;
+  }>({
+    show: false,
+    email: '',
+    credential: null,
+    googleUid: '',
+  });
+  const [linkPassword, setLinkPassword] = useState('');
+  const [linkError, setLinkError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,23 +100,21 @@ export function Login() {
         
         // Vérifier que le UID Google correspond au UID inscrit
         if (googleUid !== registeredUid) {
-          // Doublon détecté : un compte existe avec email/password, mais Google a créé un nouveau UID
-          const currentUser = auth.currentUser;
-          if (currentUser) {
-            try {
-              await deleteUser(currentUser);
-              logger.warn('Deleted duplicate Google account', { 
-                email: userEmail,
-                googleUid,
-                registeredUid,
-                message: 'Email registered with password, cannot login with Google'
-              });
-            } catch (deleteError) {
-              logger.error('Failed to delete duplicate Google account', deleteError);
-            }
-          }
+          // Compte existe avec email/password - proposer de lier Google
+          logger.info('Account exists with password, prompting to link Google', {
+            email: userEmail,
+            googleUid,
+            registeredUid
+          });
           
-          setErrors({ email: 'Ce compte existe avec un mot de passe. Connectez-vous avec votre email et mot de passe.' });
+          // Afficher le modal pour lier le compte
+          setLinkModal({
+            show: true,
+            email: userEmail,
+            credential: result.credential,
+            googleUid,
+          });
+          
           setIsLoading(false);
           return;
         }
@@ -116,6 +129,61 @@ export function Login() {
     }
     
     setIsLoading(false);
+  };
+  
+  const handleLinkAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setLinkError('');
+    
+    try {
+      // Supprimer d'abord le compte Google temporaire
+      const currentUser = auth.currentUser;
+      if (currentUser && currentUser.uid === linkModal.googleUid) {
+        await deleteUser(currentUser);
+        logger.info('Deleted temporary Google account before linking', { uid: linkModal.googleUid });
+      }
+      
+      // Lier Google au compte existant
+      const linkResult = await linkGoogleToAccount(
+        linkModal.email,
+        linkPassword,
+        linkModal.credential
+      );
+      
+      if (linkResult.success) {
+        logger.info('Google account linked successfully', { email: linkModal.email });
+        
+        // Fermer le modal et rediriger
+        setLinkModal({ show: false, email: '', credential: null, googleUid: '' });
+        setLinkPassword('');
+        router.push('/compte');
+      } else {
+        setLinkError(linkResult.error || 'Erreur lors de la liaison');
+      }
+    } catch (error) {
+      logger.error('Error in handleLinkAccount', error);
+      setLinkError('Erreur lors de la liaison du compte');
+    }
+    
+    setIsLoading(false);
+  };
+  
+  const handleCancelLink = async () => {
+    // Supprimer le compte Google créé
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.uid === linkModal.googleUid) {
+      try {
+        await deleteUser(currentUser);
+        logger.info('Deleted Google account - linking cancelled', { uid: linkModal.googleUid });
+      } catch (error) {
+        logger.error('Failed to delete Google account on cancel', error);
+      }
+    }
+    
+    setLinkModal({ show: false, email: '', credential: null, googleUid: '' });
+    setLinkPassword('');
+    setLinkError('');
   };
 
   return (
@@ -203,6 +271,96 @@ export function Login() {
           Créer un compte
         </a>
       </div>
+      
+      {/* Modal de liaison Google */}
+      <AnimatePresence>
+        {linkModal.show && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={handleCancelLink}
+            />
+            
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-semibold">Lier votre compte Google</h2>
+                  <p className="text-sm text-gray-600">
+                    Ce compte existe déjà avec un mot de passe. Pour pouvoir vous connecter avec Google, entrez votre mot de passe pour lier les deux comptes.
+                  </p>
+                </div>
+                
+                <form onSubmit={handleLinkAccount} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="link-email">Email</Label>
+                    <Input
+                      id="link-email"
+                      type="email"
+                      value={linkModal.email}
+                      disabled
+                      className="bg-gray-50"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="link-password">Mot de passe</Label>
+                    <Input
+                      id="link-password"
+                      type="password"
+                      placeholder="Entrez votre mot de passe"
+                      value={linkPassword}
+                      onChange={(e) => {
+                        setLinkPassword(e.target.value);
+                        setLinkError('');
+                      }}
+                      autoFocus
+                      className={linkError ? 'border-red-500' : ''}
+                    />
+                    {linkError && <p className="text-sm text-red-500">{linkError}</p>}
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handleCancelLink}
+                      disabled={isLoading}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1"
+                      disabled={isLoading || !linkPassword}
+                    >
+                      {isLoading ? (
+                        <LoaderIcon className="size-5 animate-spin" />
+                      ) : (
+                        'Lier et continuer'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+                
+                <p className="text-xs text-gray-500 text-center">
+                  Après cette liaison, vous pourrez vous connecter avec Google ou votre email/mot de passe.
+                </p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
