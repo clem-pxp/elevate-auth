@@ -46,6 +46,62 @@ The application utilizes React 19.1.0 with Tailwind CSS 4 and Radix UI component
 
 ## Recent Changes
 
+### October 19, 2025 - Account Linking Automatique pour Google Sign-In ✅
+**FEATURE : Permettre la connexion Google pour les comptes email/password existants**
+
+**Besoin Utilisateur** :
+- Inscription uniquement avec email/password (pour collecter toutes les infos : nom, prénom, téléphone, date de naissance)
+- Connexion possible avec email/password **OU** Google (pour la facilité)
+- Pas de doublons Firebase Auth
+
+**Solution - Account Linking Automatique** :
+
+**Flux Utilisateur** :
+1. **Inscription** : `clem@pxperfect.studio` + password → UID: `ABC123` → Paie ✅
+2. **1ère connexion Google** avec le même email :
+   - Détection : UID Google ≠ UID inscrit
+   - **Modal apparaît** : "Lier votre compte Google"
+   - Demande le mot de passe pour vérifier l'identité
+   - Entre mot de passe → **Google lié au compte existant** ✅
+3. **Prochaines connexions** : Peut utiliser Google **sans mot de passe** ! 🎉
+
+**Implémentation Technique** :
+
+**1️⃣ auth-service.ts** :
+- `signInWithGoogle()` retourne maintenant la `credential` Google
+- Nouvelle fonction `linkGoogleToAccount(email, password, googleCredential)` :
+  - Se connecte avec email/password (vérification identité)
+  - Lie Google au compte existant avec `linkWithCredential()`
+  - Gère les erreurs (mot de passe incorrect, provider déjà lié)
+
+**2️⃣ Login.tsx** :
+- Détecte quand `googleUid !== registeredUid` (compte existe avec password)
+- Affiche modal animé pour demander le mot de passe
+- Appelle `linkGoogleToAccount()` pour lier
+- Supprime le compte Google temporaire si annulation
+- Après liaison → Redirige vers `/compte`
+
+**Fichiers Modifiés :**
+- `src/types/index.ts` : AuthResult inclut credential
+- `src/lib/auth-service.ts` : signInWithGoogle + linkGoogleToAccount
+- `src/components/auth/Login.tsx` : Modal de liaison + gestion du flux
+
+**Code Pattern (linkGoogleToAccount) :**
+```typescript
+// 1. Vérifier identité avec mot de passe
+const signInResult = await signInWithEmailAndPassword(auth, email, password);
+// 2. Lier Google au compte existant
+const linkResult = await linkWithCredential(signInResult.user, googleCredential);
+// 3. L'utilisateur peut maintenant se connecter avec Google !
+```
+
+**Avantages** :
+- ✅ **Inscription complète** : Toutes les données collectées via email/password
+- ✅ **Connexion flexible** : Google OU email/password au choix
+- ✅ **Pas de doublons** : Un seul compte par email
+- ✅ **Sécurité** : Mot de passe requis pour lier (preuve d'identité)
+- ✅ **UX fluide** : Liaison en une seule fois, ensuite Google fonctionne directement
+
 ### October 19, 2025 - Protection contre les Comptes Firebase Auth en Double ✅
 **FIX CRITIQUE : Empêcher les doublons et l'accès non autorisé via Google Sign-In**
 
