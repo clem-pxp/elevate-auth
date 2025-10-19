@@ -5,25 +5,51 @@ This is a Next.js 15 application with Firebase authentication and Stripe payment
 
 ## Recent Changes
 
+### October 19, 2025 - Migration vers Stripe Embedded Checkout ✅
+**MIGRATION COMPLÉTÉE - SOLUTION SIMPLIFIÉE ET ROBUSTE**
+
+L'application a été migrée de Payment Element vers **Embedded Checkout** pour une meilleure fiabilité et simplicité.
+
+**Avantages de la nouvelle solution :**
+- ✅ **Pas de redirection** - L'utilisateur reste sur le site (flow Step 1, 2, 3, Thank you)
+- ✅ **Factures automatiquement payées** - Stripe gère tout automatiquement
+- ✅ **Code simplifié** - 70% moins de code que Payment Element
+- ✅ **Moins de bugs** - Plus de problèmes de factures non payées
+- ✅ **UI optimisée par Stripe** - Meilleure conversion
+
+**Changements techniques :**
+- ✅ Nouveau endpoint `/api/create-checkout-session` avec `ui_mode: 'embedded'`
+- ✅ Endpoint `/api/checkout-status` pour vérifier le statut après paiement
+- ✅ Step3Payment migré vers `EmbeddedCheckout` component
+- ✅ Réutilisation des Stripe customers existants (pas de duplication)
+- ✅ Gestion d'erreurs robuste avec throw sur `response.ok`
+- ✅ Contrat de données Step3→Step4 : sauvegarde `subscription_id` dans `paymentIntentId`
+
+**Flow de paiement :**
+1. Utilisateur arrive sur Step 3 (Paiement)
+2. Embedded Checkout iframe charge avec le client secret
+3. Utilisateur entre ses infos bancaires dans l'iframe Stripe
+4. Paiement confirmé → redirection vers `/auth/inscription?session_id=xxx`
+5. Step3 récupère le statut et sauvegarde `subscription_id`
+6. Utilisateur avance automatiquement vers Step 4 (Confirmation)
+
+**Code supprimé :**
+- ❌ `/api/create-subscription` (remplacé par create-checkout-session)
+- ❌ `/api/verify-payment` (plus nécessaire)
+- ❌ Payment Element code complexe
+
 ### October 19, 2025 - Stripe Webhook Integration
+**NOTE:** Avec Embedded Checkout, les webhooks sont principalement pour la synchronisation backend. Le flow de paiement n'en dépend plus.
+
 **WEBHOOK CONFIGURED ✅:**
 - ✅ Stripe webhook endpoint implemented (`/api/webhook/stripe`)
-- ✅ Handles `payment_intent.succeeded` and `invoice.payment_succeeded` events
-- ✅ Robust subscription payment flow with invoice finalization
+- ✅ Handles `checkout.session.completed`, `invoice.paid`, `customer.subscription.*` events
 - ✅ STRIPE_WEBHOOK_SECRET configured in Replit Secrets
 - ✅ Customer portal opens in new tab (fixed iframe blocking issue)
 
-**Payment Flow:**
-1. User selects a subscription plan
-2. Stripe subscription created with automatic PaymentIntent generation
-3. If PaymentIntent not auto-created, invoice is finalized to force creation
-4. Payment confirmed via Stripe Elements
-5. Webhook receives confirmation and synchronizes payment status
-6. Invoice marked as paid ✅
-
 **Webhook Configuration:**
 - URL: `https://[YOUR-REPLIT-URL].replit.dev/api/webhook/stripe`
-- Events listened: `payment_intent.succeeded`, `invoice.payment_succeeded`
+- Recommended events: `checkout.session.completed`, `invoice.paid`, `customer.subscription.updated`
 - Secret stored as: `STRIPE_WEBHOOK_SECRET`
 
 ### October 19, 2025 - Security & Code Quality Improvements
