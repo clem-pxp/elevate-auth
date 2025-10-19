@@ -46,6 +46,38 @@ The application utilizes React 19.1.0 with Tailwind CSS 4 and Radix UI component
 
 ## Recent Changes
 
+### October 19, 2025 - Séparation Inscription/Connexion Google ✅
+**MODIFICATION : Google Sign-In uniquement pour la connexion, pas l'inscription**
+
+**Changements :**
+- ❌ **Suppression Google Sign-In de l'inscription** : Seul email/password reste disponible pour l'inscription
+- ✅ **Google Sign-In conservé pour la connexion** : Mais avec vérification que le compte existe déjà
+- ✅ **Vérification Firestore** : Avant de permettre la connexion Google, on vérifie que l'utilisateur existe dans Firestore
+- ✅ **Message d'erreur clair** : "Aucun compte trouvé. Créez d'abord un compte avec votre email."
+
+**Fichiers Modifiés :**
+- `src/components/auth/Inscription/steps/Step1Informations.tsx` : Suppression bouton Google + fonction handleGoogleSignIn
+- `src/components/auth/Login.tsx` : Ajout checkEmailExists avant connexion Google
+
+**Code Pattern (Login.tsx) :**
+```typescript
+const result = await signInWithGoogle();
+if (result.success && result.user) {
+  const accountExists = await checkEmailExists(result.user.email || '');
+  if (!accountExists) {
+    setErrors({ email: 'Aucun compte trouvé. Créez d\'abord un compte avec votre email.' });
+    return;
+  }
+  router.push('/compte');
+}
+```
+
+**Avantages :**
+- ✅ **Données complètes** : Tous les comptes ont nom, prénom, téléphone, date de naissance
+- ✅ **Pas de doublons** : Un seul compte par email
+- ✅ **Google = méthode alternative** : Connexion rapide pour utilisateurs existants
+- ✅ **Pas de comptes incomplets** : Inscription force la collecte de toutes les infos
+
 ### October 19, 2025 - Login/Connexion Implementation ✅
 **AJOUT : Page de connexion complète avec email/password et Google Sign-In**
 
