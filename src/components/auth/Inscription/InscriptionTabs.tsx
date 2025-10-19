@@ -34,6 +34,10 @@ export function InscriptionTabs() {
               paymentIntentId: data.subscription_id || sessionId,
             });
             completeStep(3);
+            // Important : désactiver le loader pour afficher Step 4
+            setIsProcessingPayment(false);
+          } else {
+            setIsProcessingPayment(false);
           }
         })
         .catch((error) => {
