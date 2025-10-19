@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
       isNew: existingCustomers.data.length === 0 
     });
 
+    // Récupérer l'URL de base depuis la requête
+    const origin = request.headers.get('origin') || request.headers.get('referer')?.split('/').slice(0, 3).join('/') || process.env.NEXT_PUBLIC_APP_URL;
+    
     // Créer la session Checkout en mode embedded
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/auth/inscription?session_id={CHECKOUT_SESSION_ID}`,
+      return_url: `${origin}/auth/inscription?session_id={CHECKOUT_SESSION_ID}`,
     });
 
     logger.info('Checkout session created', { 
