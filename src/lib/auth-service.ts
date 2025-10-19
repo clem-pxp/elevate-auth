@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   fetchSignInMethodsForEmail,
+  linkWithCredential,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
@@ -106,6 +107,9 @@ export async function signInWithGoogle(): Promise<AuthResult> {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
     
+    // Récupérer la credential pour pouvoir lier le compte plus tard si nécessaire
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    
     logger.info('Google Sign-In successful', { uid: result.user.uid });
     
     return {
@@ -115,6 +119,7 @@ export async function signInWithGoogle(): Promise<AuthResult> {
         email: result.user.email,
         displayName: result.user.displayName,
       },
+      credential,
     };
   } catch (error) {
     logger.error('Google Sign-In error', error);
@@ -128,6 +133,56 @@ export async function signInWithGoogle(): Promise<AuthResult> {
         errorMessage = 'Connexion annulée';
       } else if (firebaseError.code === FIREBASE_ERROR_CODES.ACCOUNT_EXISTS) {
         errorMessage = 'Un compte existe déjà avec cet email';
+      }
+    }
+    
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+export async function linkGoogleToAccount(
+  email: string, 
+  password: string, 
+  googleCredential: any
+): Promise<AuthResult> {
+  try {
+    // 1. Se connecter avec email/password
+    const signInResult = await signInWithEmailAndPassword(auth, email, password);
+    
+    logger.info('Signed in with password for linking', { uid: signInResult.user.uid });
+    
+    // 2. Lier Google au compte existant
+    const linkResult = await linkWithCredential(signInResult.user, googleCredential);
+    
+    logger.info('Google account linked successfully', { 
+      uid: linkResult.user.uid,
+      email: email 
+    });
+    
+    return {
+      success: true,
+      user: {
+        uid: linkResult.user.uid,
+        email: linkResult.user.email,
+        displayName: linkResult.user.displayName,
+      },
+    };
+  } catch (error) {
+    logger.error('Error linking Google account', error);
+    
+    let errorMessage = 'Erreur lors de la liaison du compte';
+    
+    if (error && typeof error === 'object' && 'code' in error) {
+      const firebaseError = error as { code: string };
+      
+      if (firebaseError.code === FIREBASE_ERROR_CODES.WRONG_PASSWORD ||
+          firebaseError.code === FIREBASE_ERROR_CODES.INVALID_CREDENTIAL) {
+        errorMessage = 'Mot de passe incorrect';
+      } else if (firebaseError.code === 'auth/provider-already-linked') {
+        errorMessage = 'Google est déjà lié à ce compte';
       }
     }
     

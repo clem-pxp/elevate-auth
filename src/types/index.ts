@@ -34,6 +34,7 @@ export interface AuthResult {
     email: string | null;
     displayName: string | null;
   };
+  credential?: any;
   error?: string;
 }
 
