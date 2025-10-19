@@ -1,7 +1,7 @@
 'use client';
 
 import { lazy, Suspense } from 'react';
-import { motion } from 'motion/react';
+import { EmbeddedCheckoutProvider } from '@stripe/react-stripe-js';
 
 // Lazy load du composant EmbeddedCheckout
 const LazyEmbeddedCheckout = lazy(() => 
@@ -16,8 +16,6 @@ interface Step3PaymentLoaderProps {
 }
 
 export function Step3PaymentLoader({ fetchClientSecret, stripePromise }: Step3PaymentLoaderProps) {
-  const { EmbeddedCheckoutProvider } = require('@stripe/react-stripe-js');
-
   return (
     <Suspense
       fallback={
