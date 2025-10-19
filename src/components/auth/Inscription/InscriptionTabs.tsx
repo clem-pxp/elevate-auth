@@ -12,12 +12,30 @@ import { Step3Payment } from './steps/Step3Payment';
 import { Step4Confirmation } from './steps/Step4Confirmation';
 
 export function InscriptionTabs() {
-  const { currentStep, completeStep, setStep3Data, setCurrentStep } = useInscriptionStore();
+  const { currentStep, completeStep, setStep3Data, setCurrentStep, resetStore } = useInscriptionStore();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const isOnline = useNetworkStatus();
   const { runExclusive } = useAsyncLock();
   const processedSessionRef = useRef<string | null>(null);
+
+  // Détecter le hard refresh et reset au Step 1 (sauf si on revient de Stripe)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    
+    // Si pas de session_id (pas de retour Stripe) ET c'est un reload manuel
+    if (!sessionId && typeof window !== 'undefined') {
+      const navigation = (performance as any).getEntriesByType?.('navigation')?.[0] as any;
+      const isReload = navigation?.type === 'reload';
+      
+      // Hard refresh détecté → reset au Step 1
+      if (isReload) {
+        console.log('🔄 Hard refresh détecté - Reset au Step 1');
+        resetStore();
+      }
+    }
+  }, [resetStore]);
 
   // Vérifier si on revient de Stripe AVANT tout rendu - avec protection race condition
   useEffect(() => {

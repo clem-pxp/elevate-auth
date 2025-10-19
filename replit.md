@@ -76,6 +76,27 @@ L'application a été migrée de Payment Element vers **Embedded Checkout** pour
 - ✅ Added Zod for schema validation
 - ✅ Added firebase-admin (configured but needs secrets)
 
+### October 19, 2025 - Hard Refresh Reset Behavior
+**COMPORTEMENT INTELLIGENT DU REFRESH**
+
+L'application gère maintenant intelligemment les refresh manuels :
+
+**✅ Navigation normale (Step 1 → 2 → 3 → 4)**
+- Les données sont sauvegardées dans localStorage
+- Permet de revenir en arrière sans perdre les infos
+
+**✅ Retour de Stripe (avec `session_id` dans l'URL)**
+- Les données sont préservées
+- L'utilisateur retourne directement au Step 4
+
+**❌ Hard refresh manuel (F5 / Ctrl+R)**
+- Détection via `performance.getEntriesByType('navigation')[0].type === 'reload'`
+- Reset complet au Step 1
+- Toutes les données localStorage sont effacées
+- Log console : `🔄 Hard refresh détecté - Reset au Step 1`
+
+Cette logique évite que l'utilisateur reste bloqué dans un état incohérent si il refresh la page manuellement, tout en préservant le flow de retour depuis Stripe.
+
 ### October 19, 2025 - Debugging Portal Stripe en Production
 **AJOUT DE LOGGING DÉTAILLÉ POUR DIAGNOSTIQUER LES PROBLÈMES**
 
