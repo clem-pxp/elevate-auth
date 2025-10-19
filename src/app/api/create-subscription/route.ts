@@ -68,29 +68,30 @@ export async function POST(request: NextRequest) {
         status: paymentIntent.status
       });
     } else {
-      logger.warn('No PaymentIntent on invoice, finalizing and retrieving', {
-        invoiceId: expandedInvoice.id
+      logger.warn('No PaymentIntent on invoice, creating manually', {
+        invoiceId: expandedInvoice.id,
+        invoiceStatus: expandedInvoice.status
       });
 
-      await stripe.invoices.finalizeInvoice(expandedInvoice.id, {
-        auto_advance: false
+      const newPaymentIntent = await stripe.paymentIntents.create({
+        amount: expandedInvoice.amount_due,
+        currency: expandedInvoice.currency,
+        customer: customer.id,
+        metadata: {
+          subscription_id: subscription.id,
+          invoice_id: expandedInvoice.id,
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
       });
 
-      const retrievedInvoice = await stripe.invoices.retrieve(expandedInvoice.id, {
-        expand: ['payment_intent']
-      }) as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent | string };
-
-      const finalizedPaymentIntent = retrievedInvoice.payment_intent as Stripe.PaymentIntent | undefined;
-
-      if (finalizedPaymentIntent && typeof finalizedPaymentIntent !== 'string') {
-        clientSecret = finalizedPaymentIntent.client_secret || '';
-        logger.debug('PaymentIntent from finalized invoice', {
-          paymentIntentId: finalizedPaymentIntent.id
-        });
-      } else {
-        logger.error('Still no PaymentIntent after finalizing');
-        throw new Error('Failed to create PaymentIntent');
-      }
+      clientSecret = newPaymentIntent.client_secret || '';
+      
+      logger.debug('Manual PaymentIntent created', {
+        paymentIntentId: newPaymentIntent.id,
+        amount: expandedInvoice.amount_due
+      });
     }
 
     if (!clientSecret) {
