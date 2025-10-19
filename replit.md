@@ -124,36 +124,47 @@ import { EmbeddedCheckout } from '@stripe/react-stripe-js';
 - ✅ Formulaire de paiement charge correctement
 - ✅ Suspense toujours actif pour l'état de chargement
 
-### October 19, 2025 - Fix Portal Stripe Mobile (Popup Blocker) ✅
-**RÉSOLU : Portail Stripe bloqué sur mobile**
+### October 19, 2025 - Fix Portal Stripe Mobile + Desktop (Solution Hybride) ✅
+**RÉSOLU : Portail Stripe avec détection automatique mobile/desktop**
 
 **Problème :**
-- Sur mobile (iOS Safari, Chrome Android), le portail Stripe ne s'ouvrait pas
-- Cause : `window.open()` après un appel async est bloqué par les navigateurs mobiles
+- Sur mobile (iOS Safari, Chrome Android), le portail Stripe s'ouvrait en about:blank
+- Tentative d'ouvrir popup avec `window.open()` causait erreur "popup bloqué"
+- Besoin d'une UX différente selon le device (mobile vs desktop)
 
-**Solution Implémentée :**
-- ✅ **Ouvrir la fenêtre IMMÉDIATEMENT** au clic (avant l'appel API)
-- ✅ **Rediriger la fenêtre** une fois l'URL obtenue
-- ✅ **Fermer la fenêtre** en cas d'erreur
-- ✅ **Message d'erreur** si popup bloqué par le navigateur
+**Solution Implémentée (Détection Automatique) :**
+- ✅ **Détection mobile** via user agent + screen width
+- ✅ **Mobile** : Redirection same tab (pas de gestion multi-onglets)
+- ✅ **Desktop** : Nouvel onglet (utilisateur garde sa page ouverte)
+- ✅ **Fallback** : Si popup bloqué sur desktop → same tab redirect
 
 **Code Pattern (Step4Confirmation.tsx) :**
 ```typescript
-// 1. Ouvrir fenêtre vide IMMÉDIATEMENT (avant async)
-const portalWindow = window.open('', '_blank');
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+};
 
-// 2. Appel API async
 const data = await postJSON('/api/create-portal-session', {...});
 
-// 3. Rediriger la fenêtre déjà ouverte
-portalWindow.location.href = data.url;
+if (isMobile()) {
+  // Mobile : same tab
+  window.location.href = data.url;
+} else {
+  // Desktop : nouvel onglet
+  const newWindow = window.open(data.url, '_blank');
+  if (!newWindow) {
+    // Fallback si popup bloqué
+    window.location.href = data.url;
+  }
+}
 ```
 
 **Avantages :**
-- ✅ Fonctionne sur iOS Safari, Chrome Android, tous navigateurs
-- ✅ Pas de blocage popup (window.open dans le handler de clic)
-- ✅ UX fluide : fenêtre s'ouvre immédiatement, charge ensuite
-- ✅ Gestion d'erreurs robuste avec fermeture automatique
+- ✅ **UX optimale** selon le device
+- ✅ **Mobile** : Pas de blocage popup, navigation simple
+- ✅ **Desktop** : Utilisateur garde sa page ouverte, peut comparer
+- ✅ **Robuste** : Fallback automatique si popup bloqué
+- ✅ Fonctionne sur tous navigateurs et devices
 
 ### October 19, 2025 - Optimizations Cleanup & Stabilization ✅
 **RETOUR À LA VERSION STABLE SANS OPTIMISATIONS PROBLÉMATIQUES**

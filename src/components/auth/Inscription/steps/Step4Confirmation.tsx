@@ -34,6 +34,12 @@ export function Step4Confirmation() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { runExclusive } = useAsyncLock();
 
+  // Détecter si on est sur mobile
+  const isMobile = () => {
+    if (typeof window === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+  };
+
   // Gérer l'accès au portail Stripe avec protection race condition
   const handleManageSubscription = async () => {
     console.log('🔍 handleManageSubscription called');
@@ -50,17 +56,6 @@ export function Step4Confirmation() {
     const result = await runExclusive(async () => {
       setIsRedirecting(true);
       setError(null);
-
-      // 🔑 SOLUTION MOBILE : Ouvrir une fenêtre vide IMMÉDIATEMENT au clic
-      // avant l'appel async, pour éviter le blocage popup sur mobile
-      const portalWindow = window.open('', '_blank', 'noopener,noreferrer');
-      
-      if (!portalWindow) {
-        console.error('❌ Popup bloqué par le navigateur');
-        setError('Popup bloqué. Autorisez les popups pour ce site ou désactivez votre bloqueur de publicités.');
-        setIsRedirecting(false);
-        return;
-      }
 
       try {
         console.log('📡 Calling /api/create-portal-session with customerId:', userData.stripeCustomerId);
@@ -79,25 +74,35 @@ export function Step4Confirmation() {
         console.log('✅ Portal session response:', data);
 
         if (data.url) {
-          console.log('🚀 Redirecting portal window to:', data.url);
-          // Rediriger la fenêtre déjà ouverte vers l'URL Stripe
-          portalWindow.location.href = data.url;
+          const mobile = isMobile();
+          console.log(`🚀 Opening portal (${mobile ? 'mobile - same tab' : 'desktop - new tab'}):`, data.url);
+          
+          if (mobile) {
+            // 📱 MOBILE : Redirection same tab (meilleure UX mobile)
+            window.location.href = data.url;
+          } else {
+            // 💻 DESKTOP : Nouvel onglet (utilisateur peut garder sa page ouverte)
+            const newWindow = window.open(data.url, '_blank', 'noopener,noreferrer');
+            if (!newWindow) {
+              // Fallback si popup bloqué
+              console.warn('⚠️ Popup bloqué, fallback vers same tab');
+              window.location.href = data.url;
+            } else {
+              setIsRedirecting(false);
+            }
+          }
         } else {
-          // Fermer la fenêtre en cas d'erreur
-          portalWindow.close();
           setError('Impossible de charger le portail Stripe');
           console.error('❌ No URL in response');
+          setIsRedirecting(false);
         }
       } catch (error) {
-        // Fermer la fenêtre en cas d'erreur
-        portalWindow.close();
         console.error('❌ Portal session error:', error);
         if (error instanceof FetchError) {
           setError(`Erreur: ${error.message}`);
         } else {
           setError('Erreur lors de la redirection vers le portail');
         }
-      } finally {
         setIsRedirecting(false);
       }
     });
