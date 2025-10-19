@@ -42,8 +42,7 @@ export async function POST(request: NextRequest) {
       payment_settings: {
         save_default_payment_method: 'on_subscription',
       },
-      expand: ['latest_invoice.payment_intent'],
-      automatic_tax: { enabled: false },
+      expand: ['latest_invoice.confirmation_secret'],
     });
 
     logger.debug('Subscription created', { subscriptionId: subscription.id });
@@ -56,48 +55,19 @@ export async function POST(request: NextRequest) {
     }
 
     const expandedInvoice = invoice as Stripe.Invoice & {
-      payment_intent?: Stripe.PaymentIntent | string;
+      confirmation_secret?: { client_secret: string };
     };
-    let paymentIntent = expandedInvoice.payment_intent;
-    let clientSecret: string;
 
-    if (paymentIntent && typeof paymentIntent !== 'string') {
-      clientSecret = paymentIntent.client_secret || '';
-      logger.debug('PaymentIntent retrieved from subscription', {
-        paymentIntentId: paymentIntent.id,
-        status: paymentIntent.status
-      });
-    } else {
-      logger.warn('No PaymentIntent on invoice, creating manually', {
-        invoiceId: expandedInvoice.id,
-        invoiceStatus: expandedInvoice.status
-      });
-
-      const newPaymentIntent = await stripe.paymentIntents.create({
-        amount: expandedInvoice.amount_due,
-        currency: expandedInvoice.currency,
-        customer: customer.id,
-        metadata: {
-          subscription_id: subscription.id,
-          invoice_id: expandedInvoice.id,
-        },
-        automatic_payment_methods: {
-          enabled: true,
-        },
-      });
-
-      clientSecret = newPaymentIntent.client_secret || '';
-      
-      logger.debug('Manual PaymentIntent created', {
-        paymentIntentId: newPaymentIntent.id,
-        amount: expandedInvoice.amount_due
-      });
-    }
+    const clientSecret = expandedInvoice.confirmation_secret?.client_secret;
 
     if (!clientSecret) {
-      logger.error('Client secret missing');
+      logger.error('Client secret missing from confirmation_secret');
       throw new Error('Failed to retrieve client secret');
     }
+
+    logger.debug('Client secret retrieved from confirmation_secret', {
+      subscriptionId: subscription.id
+    });
 
     logger.info('Subscription completed', { 
       subscriptionId: subscription.id,
