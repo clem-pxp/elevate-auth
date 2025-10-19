@@ -5,6 +5,27 @@ This is a Next.js 15 application with Firebase authentication and Stripe payment
 
 ## Recent Changes
 
+### October 19, 2025 - Stripe Webhook Integration
+**WEBHOOK CONFIGURED ✅:**
+- ✅ Stripe webhook endpoint implemented (`/api/webhook/stripe`)
+- ✅ Handles `payment_intent.succeeded` and `invoice.payment_succeeded` events
+- ✅ Robust subscription payment flow with invoice finalization
+- ✅ STRIPE_WEBHOOK_SECRET configured in Replit Secrets
+- ✅ Customer portal opens in new tab (fixed iframe blocking issue)
+
+**Payment Flow:**
+1. User selects a subscription plan
+2. Stripe subscription created with automatic PaymentIntent generation
+3. If PaymentIntent not auto-created, invoice is finalized to force creation
+4. Payment confirmed via Stripe Elements
+5. Webhook receives confirmation and synchronizes payment status
+6. Invoice marked as paid ✅
+
+**Webhook Configuration:**
+- URL: `https://[YOUR-REPLIT-URL].replit.dev/api/webhook/stripe`
+- Events listened: `payment_intent.succeeded`, `invoice.payment_succeeded`
+- Secret stored as: `STRIPE_WEBHOOK_SECRET`
+
 ### October 19, 2025 - Security & Code Quality Improvements
 **CRITICAL SECURITY FIXES:**
 - ✅ Secured Stripe payment endpoints - server now validates all pricing (prevents payment manipulation)
@@ -81,9 +102,10 @@ All secrets are configured in Replit Secrets:
   - FIREBASE_CLIENT_EMAIL
   - FIREBASE_PRIVATE_KEY
 
-- **Stripe** (2 keys):
+- **Stripe** (3 keys):
   - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   - STRIPE_SECRET_KEY
+  - STRIPE_WEBHOOK_SECRET
 
 - **App Configuration**:
   - NEXT_PUBLIC_APP_URL
