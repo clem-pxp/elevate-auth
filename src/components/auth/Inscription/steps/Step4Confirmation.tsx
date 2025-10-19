@@ -47,13 +47,14 @@ export function Step4Confirmation() {
       const data = await response.json();
 
       if (data.url) {
-        window.location.href = data.url;
+        window.open(data.url, '_blank');
+        setIsRedirecting(false);
       } else {
-        console.error('❌ No portal URL returned');
+        setError('Impossible de charger le portail Stripe');
         setIsRedirecting(false);
       }
     } catch (error) {
-      console.error('❌ Portal session error:', error);
+      setError('Erreur lors de la redirection vers le portail');
       setIsRedirecting(false);
     }
   };
@@ -62,11 +63,8 @@ export function Step4Confirmation() {
     const createAccount = async () => {
       const data = getInscriptionData();
 
-      console.log('📦 Données récupérées:', data); // ⬅️ DEBUG
-
       // Vérifier que toutes les données sont présentes
       if (!data || !data.email || !data.planId || !data.stripePriceId) {
-        console.error('❌ Données manquantes:', data);
         setError('Données manquantes. Veuillez recommencer le processus.');
         setIsCreating(false);
         return;
@@ -93,7 +91,6 @@ export function Step4Confirmation() {
       if (result.success) {
         setUserData(data);
         setIsCreating(false);
-        console.log('✅ Compte créé avec succès, User ID:', result.userId);
       } else {
         setError(result.error || 'Une erreur est survenue');
         setIsCreating(false);
