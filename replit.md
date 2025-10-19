@@ -46,6 +46,37 @@ The application utilizes React 19.1.0 with Tailwind CSS 4 and Radix UI component
 
 ## Recent Changes
 
+### October 19, 2025 - Protection contre les Comptes Firebase Auth en Double ✅
+**FIX CRITIQUE : Empêcher Firebase Auth de créer plusieurs comptes avec le même email**
+
+**Problème** :
+- Firebase Auth créait des comptes multiples avec le même email (UIDs différents)
+- L'option Firebase "Associer les comptes" ne **prévient pas** les doublons, elle les **lie** après création
+- Race condition entre Step1 (vérification) et Step4 (création du compte)
+
+**Solution** :
+- ✅ **Nouvelle fonction checkEmailExistsInAuth()** : Vérifie dans Firebase Auth via `fetchSignInMethodsForEmail`
+- ✅ **Double vérification** : Step1 (UX immédiat) + createUserAccount() (avant création)
+- ✅ **Élimination race condition** : Vérification JUSTE AVANT `createUserWithEmailAndPassword()`
+- ✅ **Logging** : Avertissement si tentative de doublon détectée
+
+**Fichiers Modifiés :**
+- `src/lib/auth-service.ts` : Ajout checkEmailExistsInAuth + vérification dans createUserAccount
+- `src/components/auth/Inscription/steps/Step1Informations.tsx` : Utilise checkEmailExistsInAuth
+
+**Code Pattern (createUserAccount) :**
+```typescript
+// Vérifier Firebase Auth JUSTE AVANT de créer le compte
+const emailExistsInAuth = await checkEmailExistsInAuth(data.email);
+if (emailExistsInAuth) {
+  logger.warn('Account creation blocked - email exists in Firebase Auth');
+  return { success: false, error: 'Cet email est déjà utilisé.' };
+}
+const userCredential = await createUserWithEmailAndPassword(auth, data.email, password);
+```
+
+**Note** : Login.tsx garde `checkEmailExists` (Firestore) car il vérifie que l'inscription est complète (toutes les données).
+
 ### October 19, 2025 - Séparation Inscription/Connexion Google ✅
 **MODIFICATION : Google Sign-In uniquement pour la connexion, pas l'inscription**
 
