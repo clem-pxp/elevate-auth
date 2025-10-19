@@ -43,3 +43,39 @@ The application utilizes React 19.1.0 with Tailwind CSS 4 and Radix UI component
 - **Radix UI**: UI component library.
 - **Motion**: Animation library.
 - **Embla Carousel**: Carousel component.
+
+## Recent Changes
+
+### October 19, 2025 - Login/Connexion Implementation ✅
+**AJOUT : Page de connexion complète avec email/password et Google Sign-In**
+
+**Fonctionnalités Ajoutées :**
+- ✅ **Fonction signInWithEmail** dans auth-service.ts pour connexion email/password
+- ✅ **LoginSchema** Zod pour validation du formulaire de connexion
+- ✅ **Composant Login** avec le même style que Step1Informations
+- ✅ **Google Sign-In** pour connexion rapide
+- ✅ **Gestion d'erreurs** Firebase avec messages français appropriés
+- ✅ **Redirection automatique** vers /compte après connexion réussie
+
+**Fichiers Créés/Modifiés :**
+- `src/lib/constants.ts` : Ajout codes erreur Firebase (USER_NOT_FOUND, WRONG_PASSWORD, INVALID_CREDENTIAL)
+- `src/lib/auth-service.ts` : Fonction signInWithEmail avec gestion erreurs
+- `src/lib/client-validation.ts` : LoginSchema pour validation formulaire
+- `src/components/auth/Login.tsx` : Composant de connexion complet
+- `src/app/auth/connexion/page.tsx` : Intégration du composant Login
+
+**Code Pattern (Login.tsx) :**
+```typescript
+const result = await signInWithEmail(formData.email, formData.password);
+if (result.success) {
+  router.push('/compte');
+} else {
+  setErrors({ email: result.error || 'Erreur lors de la connexion' });
+}
+```
+
+**Avantages :**
+- ✅ **UX cohérente** : Même style que le formulaire d'inscription
+- ✅ **Sécurisé** : Validation Zod + gestion erreurs Firebase
+- ✅ **Accessible** : Email/password + Google Sign-In
+- ✅ **Mobile-friendly** : Responsive design avec Motion animations
