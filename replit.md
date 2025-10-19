@@ -76,6 +76,37 @@ L'application a été migrée de Payment Element vers **Embedded Checkout** pour
 - ✅ Added Zod for schema validation
 - ✅ Added firebase-admin (configured but needs secrets)
 
+### October 19, 2025 - Debugging Portal Stripe en Production
+**AJOUT DE LOGGING DÉTAILLÉ POUR DIAGNOSTIQUER LES PROBLÈMES**
+
+**Problème Rapporté :**
+- En production sur Vercel, le bouton "Gérer mon abonnement" ne redirige pas vers le portail Stripe
+
+**Debugging Ajouté :**
+- ✅ Console logs détaillés dans Step4Confirmation (userData, stripeCustomerId, appels API)
+- ✅ Console logs dans InscriptionTabs lors de la sauvegarde post-paiement
+- ✅ Validation `stripeCustomerId` avant appel API avec message d'erreur user-friendly
+- ✅ Affichage d'erreur visuel en cas de problème
+- ✅ Debug panel en mode développement pour inspecter les données
+
+**Pour Débugger en Production :**
+1. Ouvrir la console navigateur (F12 → Console)
+2. Compléter le flow d'inscription jusqu'à Step 4
+3. Cliquer sur "Gérer mon abonnement"
+4. Observer les logs console :
+   - `🔍 handleManageSubscription called`
+   - `📦 userData: {...}`
+   - `🎫 stripeCustomerId: cus_xxx`
+   - `📡 Calling /api/create-portal-session`
+   - `✅ Portal session response: {...}`
+   - `🚀 Opening portal URL: https://...`
+
+**Causes Possibles :**
+1. `stripeCustomerId` manquant → Message d'erreur "ID client Stripe manquant"
+2. Erreur API Stripe → Voir les logs serveur Vercel
+3. Pop-up bloqué par le navigateur → Vérifier les paramètres de pop-up
+4. CORS ou politique de sécurité → Vérifier les logs réseau (F12 → Network)
+
 ### October 19, 2025 - Performance & Robustness Improvements ✅
 **OPTIMISATIONS COMPLÈTES - APPLICATION PRODUCTION-READY**
 

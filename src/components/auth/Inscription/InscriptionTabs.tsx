@@ -47,12 +47,17 @@ export function InscriptionTabs() {
           );
 
           if (data.status === 'complete') {
+            console.log('✅ Checkout session complete:', data);
+            console.log('💾 Saving stripeCustomerId:', data.customer_id);
+            console.log('💾 Saving subscription_id:', data.subscription_id);
+            
             setStep3Data({
               stripeCustomerId: data.customer_id || '',
               paymentIntentId: data.subscription_id || sessionId,
             });
             completeStep(3);
           } else {
+            console.error('❌ Checkout session not complete:', data);
             setPaymentError('Le paiement n\'a pas été confirmé. Veuillez réessayer.');
           }
         } catch (error) {

@@ -36,11 +36,24 @@ export function Step4Confirmation() {
 
   // Gérer l'accès au portail Stripe avec protection race condition
   const handleManageSubscription = async () => {
+    console.log('🔍 handleManageSubscription called');
+    console.log('📦 userData:', userData);
+    console.log('🎫 stripeCustomerId:', userData?.stripeCustomerId);
+
+    // Vérifier que le customerId existe
+    if (!userData?.stripeCustomerId) {
+      setError('ID client Stripe manquant. Veuillez contacter le support.');
+      console.error('❌ Missing stripeCustomerId in userData');
+      return;
+    }
+
     const result = await runExclusive(async () => {
       setIsRedirecting(true);
       setError(null);
 
       try {
+        console.log('📡 Calling /api/create-portal-session with customerId:', userData.stripeCustomerId);
+        
         const data = await postJSON<{ url: string }>(
           '/api/create-portal-session',
           {
@@ -52,12 +65,17 @@ export function Step4Confirmation() {
           }
         );
 
+        console.log('✅ Portal session response:', data);
+
         if (data.url) {
+          console.log('🚀 Opening portal URL:', data.url);
           window.open(data.url, '_blank', 'noopener,noreferrer');
         } else {
           setError('Impossible de charger le portail Stripe');
+          console.error('❌ No URL in response');
         }
       } catch (error) {
+        console.error('❌ Portal session error:', error);
         if (error instanceof FetchError) {
           setError(`Erreur: ${error.message}`);
         } else {
@@ -69,7 +87,7 @@ export function Step4Confirmation() {
     });
 
     if (result === null) {
-      console.warn('Portal session already being created');
+      console.warn('⚠️ Portal session already being created');
     }
   };
 
@@ -206,10 +224,34 @@ export function Step4Confirmation() {
       </motion.div>
 
       {/* CTA Button */}
-      {/* CTA Button */}
       <Button className="w-full" size="lg" onClick={handleManageSubscription} disabled={isRedirecting}>
         {isRedirecting ? 'Redirection...' : 'Gérer mon abonnement'}
       </Button>
+
+      {/* Afficher l'erreur si présente */}
+      {error && (
+        <div className="w-full max-w-md p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-800">{error}</p>
+          <p className="text-xs text-red-600 mt-2">
+            Vérifiez la console du navigateur (F12) pour plus de détails.
+          </p>
+        </div>
+      )}
+
+      {/* Debug Info - afficher uniquement en dev */}
+      {process.env.NODE_ENV === 'development' && (
+        <details className="w-full max-w-md text-left">
+          <summary className="cursor-pointer text-xs text-gray-500">Debug Info (dev only)</summary>
+          <pre className="text-xs bg-gray-100 p-2 rounded mt-2 overflow-auto">
+            {JSON.stringify({
+              stripeCustomerId: userData?.stripeCustomerId,
+              paymentIntentId: userData?.paymentIntentId,
+              email: userData?.email,
+              planId: userData?.planId,
+            }, null, 2)}
+          </pre>
+        </details>
+      )}
 
       {/* Help Text */}
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-sm text-gray-500">
