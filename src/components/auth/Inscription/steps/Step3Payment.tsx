@@ -1,167 +1,91 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
-import { Button } from '@/components/ui/button';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/lib/stripe-client';
-import { STRIPE_APPEARANCE } from '@/lib/constants';
 
-// Composant form
-function CheckoutForm() {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { completeStep, setCurrentStep, setStep3Data } = useInscriptionStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/auth/inscription`,
-      },
-      redirect: 'if_required',
-    });
-
-    if (error) {
-      setErrorMessage(error.message || 'Une erreur est survenue');
-      setIsLoading(false);
-    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-      // Vérifier le paiement côté serveur et finaliser la facture
-      try {
-        const verifyResponse = await fetch('/api/verify-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
-        });
-
-        const verifyData = await verifyResponse.json();
-        
-        if (verifyData.success) {
-          setStep3Data({
-            paymentIntentId: paymentIntent.id,
-          });
-          completeStep(3);
-        } else {
-          setErrorMessage('Erreur lors de la vérification du paiement.');
-          setIsLoading(false);
-        }
-      } catch (verifyError) {
-        // Même si la vérification échoue, le paiement a réussi
-        setStep3Data({
-          paymentIntentId: paymentIntent.id,
-        });
-        completeStep(3);
-      }
-    } else {
-      setErrorMessage('Le paiement n\'a pas pu être confirmé. Veuillez réessayer.');
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Stripe Payment Element - Full width */}
-      <PaymentElement
-        options={{
-          layout: {
-            type: 'tabs',
-            defaultCollapsed: false,
-          },
-          paymentMethodOrder: ['card', 'apple_pay'],
-        }}
-      />
-
-      {errorMessage && <div className="text-sm text-red-600 bg-red-50 p-4 rounded-xl border border-red-100">{errorMessage}</div>}
-
-      <div className="flex gap-4">
-        <Button type="button" variant="outline" onClick={() => setCurrentStep(2)} className="flex-1" disabled={isLoading}>
-          Retour
-        </Button>
-        <Button type="submit" className="flex-1" disabled={!stripe || isLoading}>
-          {isLoading ? 'Traitement...' : 'Payer 16,99€'}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-// Composant parent
 export function Step3Payment() {
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
-  const { getInscriptionData, setStep3Data } = useInscriptionStore();
+  const { getInscriptionData, completeStep, setStep3Data } = useInscriptionStore();
 
+  // Vérifier si on revient de Stripe (session_id dans l'URL)
   useEffect(() => {
-    const data = getInscriptionData();
-    
-    if (!data.stripePriceId) {
-      return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+
+    if (sessionId) {
+      // Récupérer le statut de la session
+      fetch(`/api/checkout-status?session_id=${sessionId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === 'complete') {
+            // Paiement réussi !
+            setStep3Data({
+              stripeCustomerId: data.customer_id || '',
+              paymentIntentId: sessionId,
+            });
+            completeStep(3);
+            
+            // Nettoyer l'URL
+            window.history.replaceState({}, '', '/auth/inscription');
+          }
+        })
+        .catch((error) => {
+          console.error('Error checking session status:', error);
+        });
     }
-    
-    fetch('/api/create-subscription', {
+  }, [completeStep, setStep3Data]);
+
+  // Fonction pour récupérer le client secret
+  const fetchClientSecret = useCallback(async () => {
+    const data = getInscriptionData();
+
+    const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         priceId: data.stripePriceId,
         email: data.email,
       }),
-    })
-      .then((res) => res.json())
-      .then((responseData) => {
-        setClientSecret(responseData.clientSecret);
-        setSubscriptionId(responseData.subscriptionId);
-        
-        if (responseData.customerId) {
-          setStep3Data({
-            paymentIntentId: '',
-            stripeCustomerId: responseData.customerId,
-          });
-        }
-      })
-      .catch(() => {});
+    });
+
+    const responseData = await response.json();
+    
+    // Sauvegarder le customer ID
+    if (responseData.customerId) {
+      setStep3Data({
+        stripeCustomerId: responseData.customerId,
+        paymentIntentId: '',
+      });
+    }
+
+    return responseData.clientSecret;
   }, [getInscriptionData, setStep3Data]);
 
-  if (!clientSecret) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
-          <p className="text-sm text-gray-600">Chargement du paiement...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="space-y-6"
+    >
       {/* Header */}
       <div className="flex flex-col gap-2">
         <h1 className="sub-h4">Paiement sécurisé</h1>
-        <p className="text-sm text-pretty text-gray-600">Votre paiement est sécurisé par Stripe. Vos données bancaires ne sont jamais stockées sur nos serveurs.</p>
+        <p className="text-sm text-pretty text-gray-600">
+          Votre paiement est sécurisé par Stripe. Vos données bancaires ne sont jamais stockées sur nos serveurs.
+        </p>
       </div>
 
-      {/* Stripe Elements */}
-      <Elements
-        stripe={stripePromise}
-        options={{
-          clientSecret,
-          appearance: STRIPE_APPEARANCE,
-        }}
-      >
-        <CheckoutForm />
-      </Elements>
+      {/* Embedded Checkout */}
+      <div id="checkout" className="min-h-[500px]">
+        <EmbeddedCheckoutProvider
+          stripe={stripePromise}
+          options={{ fetchClientSecret }}
+        >
+          <EmbeddedCheckout />
+        </EmbeddedCheckoutProvider>
+      </div>
     </motion.div>
   );
 }
