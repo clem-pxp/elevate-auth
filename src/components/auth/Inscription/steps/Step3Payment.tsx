@@ -38,11 +38,32 @@ function CheckoutForm() {
       setErrorMessage(error.message || 'Une erreur est survenue');
       setIsLoading(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-      setStep3Data({
-        paymentIntentId: paymentIntent.id,
-      });
+      // Vérifier le paiement côté serveur et finaliser la facture
+      try {
+        const verifyResponse = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
+        });
 
-      completeStep(3);
+        const verifyData = await verifyResponse.json();
+        
+        if (verifyData.success) {
+          setStep3Data({
+            paymentIntentId: paymentIntent.id,
+          });
+          completeStep(3);
+        } else {
+          setErrorMessage('Erreur lors de la vérification du paiement.');
+          setIsLoading(false);
+        }
+      } catch (verifyError) {
+        // Même si la vérification échoue, le paiement a réussi
+        setStep3Data({
+          paymentIntentId: paymentIntent.id,
+        });
+        completeStep(3);
+      }
     } else {
       setErrorMessage('Le paiement n\'a pas pu être confirmé. Veuillez réessayer.');
       setIsLoading(false);
