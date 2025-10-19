@@ -24,14 +24,18 @@ L'application a été migrée de Payment Element vers **Embedded Checkout** pour
 - ✅ Réutilisation des Stripe customers existants (pas de duplication)
 - ✅ Gestion d'erreurs robuste avec throw sur `response.ok`
 - ✅ Contrat de données Step3→Step4 : sauvegarde `subscription_id` dans `paymentIntentId`
+- ✅ Store Zustand persisté dans localStorage (survit aux redirections)
+- ✅ URL dynamique pour return_url (fonctionne sur Replit et Vercel)
+- ✅ Portail client Stripe ouvre dans le même onglet
 
 **Flow de paiement :**
 1. Utilisateur arrive sur Step 3 (Paiement)
 2. Embedded Checkout iframe charge avec le client secret
 3. Utilisateur entre ses infos bancaires dans l'iframe Stripe
 4. Paiement confirmé → redirection vers `/auth/inscription?session_id=xxx`
-5. Step3 récupère le statut et sauvegarde `subscription_id`
-6. Utilisateur avance automatiquement vers Step 4 (Confirmation)
+5. App détecte `session_id` dans l'URL, vérifie le statut, sauvegarde `subscription_id`
+6. Utilisateur avance **automatiquement vers Step 4** (Confirmation)
+7. Compte Firebase créé avec toutes les données ✅
 
 **Code supprimé :**
 - ❌ `/api/create-subscription` (remplacé par create-checkout-session)

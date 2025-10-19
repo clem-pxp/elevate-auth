@@ -47,8 +47,8 @@ export function Step4Confirmation() {
       const data = await response.json();
 
       if (data.url) {
-        window.open(data.url, '_blank');
-        setIsRedirecting(false);
+        // Ouvrir dans le même onglet pour éviter les bloqueurs de popups
+        window.location.href = data.url;
       } else {
         setError('Impossible de charger le portail Stripe');
         setIsRedirecting(false);

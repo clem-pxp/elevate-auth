@@ -12,26 +12,26 @@ import { Step4Confirmation } from './steps/Step4Confirmation';
 export function InscriptionTabs() {
   const { currentStep, completeStep, setStep3Data, setCurrentStep } = useInscriptionStore();
 
-  // Vérifier si on revient de Stripe (session_id dans l'URL)
+  // Vérifier si on revient de Stripe (session_id dans l'URL) - UNE SEULE FOIS
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');
 
     if (sessionId) {
-      // Nettoyer l'URL immédiatement pour éviter les re-renders
-      window.history.replaceState({}, '', '/auth/inscription');
+      // Nettoyer l'URL IMMÉDIATEMENT
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
       
       // Récupérer le statut de la session
       fetch(`/api/checkout-status?session_id=${sessionId}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.status === 'complete') {
-            // Paiement réussi ! Sauvegarder les IDs réels
+            // Paiement réussi !
             setStep3Data({
               stripeCustomerId: data.customer_id || '',
               paymentIntentId: data.subscription_id || sessionId,
             });
-            // Aller directement à Step 4
             completeStep(3);
           }
         })
@@ -39,7 +39,7 @@ export function InscriptionTabs() {
           console.error('Error checking session status:', error);
         });
     }
-  }, []);
+  }, [completeStep, setStep3Data]);
 
   return (
     <div className="w-full space-y-8 my-8">
