@@ -51,6 +51,17 @@ export function Step4Confirmation() {
       setIsRedirecting(true);
       setError(null);
 
+      // 🔑 SOLUTION MOBILE : Ouvrir une fenêtre vide IMMÉDIATEMENT au clic
+      // avant l'appel async, pour éviter le blocage popup sur mobile
+      const portalWindow = window.open('', '_blank', 'noopener,noreferrer');
+      
+      if (!portalWindow) {
+        console.error('❌ Popup bloqué par le navigateur');
+        setError('Popup bloqué. Autorisez les popups pour ce site ou désactivez votre bloqueur de publicités.');
+        setIsRedirecting(false);
+        return;
+      }
+
       try {
         console.log('📡 Calling /api/create-portal-session with customerId:', userData.stripeCustomerId);
         
@@ -68,13 +79,18 @@ export function Step4Confirmation() {
         console.log('✅ Portal session response:', data);
 
         if (data.url) {
-          console.log('🚀 Opening portal URL:', data.url);
-          window.open(data.url, '_blank', 'noopener,noreferrer');
+          console.log('🚀 Redirecting portal window to:', data.url);
+          // Rediriger la fenêtre déjà ouverte vers l'URL Stripe
+          portalWindow.location.href = data.url;
         } else {
+          // Fermer la fenêtre en cas d'erreur
+          portalWindow.close();
           setError('Impossible de charger le portail Stripe');
           console.error('❌ No URL in response');
         }
       } catch (error) {
+        // Fermer la fenêtre en cas d'erreur
+        portalWindow.close();
         console.error('❌ Portal session error:', error);
         if (error instanceof FetchError) {
           setError(`Erreur: ${error.message}`);

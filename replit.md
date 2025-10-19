@@ -97,36 +97,36 @@ L'application gère maintenant intelligemment les refresh manuels :
 
 Cette logique évite que l'utilisateur reste bloqué dans un état incohérent si il refresh la page manuellement, tout en préservant le flow de retour depuis Stripe.
 
-### October 19, 2025 - Debugging Portal Stripe en Production
-**AJOUT DE LOGGING DÉTAILLÉ POUR DIAGNOSTIQUER LES PROBLÈMES**
+### October 19, 2025 - Fix Portal Stripe Mobile (Popup Blocker) ✅
+**RÉSOLU : Portail Stripe bloqué sur mobile**
 
-**Problème Rapporté :**
-- En production sur Vercel, le bouton "Gérer mon abonnement" ne redirige pas vers le portail Stripe
+**Problème :**
+- Sur mobile (iOS Safari, Chrome Android), le portail Stripe ne s'ouvrait pas
+- Cause : `window.open()` après un appel async est bloqué par les navigateurs mobiles
 
-**Debugging Ajouté :**
-- ✅ Console logs détaillés dans Step4Confirmation (userData, stripeCustomerId, appels API)
-- ✅ Console logs dans InscriptionTabs lors de la sauvegarde post-paiement
-- ✅ Validation `stripeCustomerId` avant appel API avec message d'erreur user-friendly
-- ✅ Affichage d'erreur visuel en cas de problème
-- ✅ Debug panel en mode développement pour inspecter les données
+**Solution Implémentée :**
+- ✅ **Ouvrir la fenêtre IMMÉDIATEMENT** au clic (avant l'appel API)
+- ✅ **Rediriger la fenêtre** une fois l'URL obtenue
+- ✅ **Fermer la fenêtre** en cas d'erreur
+- ✅ **Message d'erreur** si popup bloqué par le navigateur
 
-**Pour Débugger en Production :**
-1. Ouvrir la console navigateur (F12 → Console)
-2. Compléter le flow d'inscription jusqu'à Step 4
-3. Cliquer sur "Gérer mon abonnement"
-4. Observer les logs console :
-   - `🔍 handleManageSubscription called`
-   - `📦 userData: {...}`
-   - `🎫 stripeCustomerId: cus_xxx`
-   - `📡 Calling /api/create-portal-session`
-   - `✅ Portal session response: {...}`
-   - `🚀 Opening portal URL: https://...`
+**Code Pattern (Step4Confirmation.tsx) :**
+```typescript
+// 1. Ouvrir fenêtre vide IMMÉDIATEMENT (avant async)
+const portalWindow = window.open('', '_blank');
 
-**Causes Possibles :**
-1. `stripeCustomerId` manquant → Message d'erreur "ID client Stripe manquant"
-2. Erreur API Stripe → Voir les logs serveur Vercel
-3. Pop-up bloqué par le navigateur → Vérifier les paramètres de pop-up
-4. CORS ou politique de sécurité → Vérifier les logs réseau (F12 → Network)
+// 2. Appel API async
+const data = await postJSON('/api/create-portal-session', {...});
+
+// 3. Rediriger la fenêtre déjà ouverte
+portalWindow.location.href = data.url;
+```
+
+**Avantages :**
+- ✅ Fonctionne sur iOS Safari, Chrome Android, tous navigateurs
+- ✅ Pas de blocage popup (window.open dans le handler de clic)
+- ✅ UX fluide : fenêtre s'ouvre immédiatement, charge ensuite
+- ✅ Gestion d'erreurs robuste avec fermeture automatique
 
 ### October 19, 2025 - Performance & Robustness Improvements ✅
 **OPTIMISATIONS COMPLÈTES - APPLICATION PRODUCTION-READY**
