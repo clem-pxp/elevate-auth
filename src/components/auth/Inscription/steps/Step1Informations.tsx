@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
-import { checkEmailExists } from '@/lib/auth-service';
+import { checkEmailExistsInAuth } from '@/lib/auth-service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,7 +49,7 @@ export function Step1Informations() {
     }
 
     setIsLoading(true);
-    const emailExists = await checkEmailExists(formData.email);
+    const emailExists = await checkEmailExistsInAuth(formData.email);
     setIsLoading(false);
 
     if (emailExists) {
