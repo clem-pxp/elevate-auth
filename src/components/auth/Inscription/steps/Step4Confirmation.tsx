@@ -34,12 +34,6 @@ export function Step4Confirmation() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { runExclusive } = useAsyncLock();
 
-  // Détecter si on est sur mobile
-  const isMobile = () => {
-    if (typeof window === 'undefined') return false;
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-  };
-
   // Gérer l'accès au portail Stripe avec protection race condition
   const handleManageSubscription = async () => {
     console.log('🔍 handleManageSubscription called');
@@ -74,23 +68,9 @@ export function Step4Confirmation() {
         console.log('✅ Portal session response:', data);
 
         if (data.url) {
-          const mobile = isMobile();
-          console.log(`🚀 Opening portal (${mobile ? 'mobile - same tab' : 'desktop - new tab'}):`, data.url);
-          
-          if (mobile) {
-            // 📱 MOBILE : Redirection same tab (meilleure UX mobile)
-            window.location.href = data.url;
-          } else {
-            // 💻 DESKTOP : Nouvel onglet (utilisateur peut garder sa page ouverte)
-            const newWindow = window.open(data.url, '_blank', 'noopener,noreferrer');
-            if (!newWindow) {
-              // Fallback si popup bloqué
-              console.warn('⚠️ Popup bloqué, fallback vers same tab');
-              window.location.href = data.url;
-            } else {
-              setIsRedirecting(false);
-            }
-          }
+          console.log('🚀 Redirecting to Stripe portal (same tab):', data.url);
+          // Redirection dans le même onglet (fonctionne sur mobile ET desktop)
+          window.location.href = data.url;
         } else {
           setError('Impossible de charger le portail Stripe');
           console.error('❌ No URL in response');

@@ -124,47 +124,36 @@ import { EmbeddedCheckout } from '@stripe/react-stripe-js';
 - ✅ Formulaire de paiement charge correctement
 - ✅ Suspense toujours actif pour l'état de chargement
 
-### October 19, 2025 - Fix Portal Stripe Mobile + Desktop (Solution Hybride) ✅
-**RÉSOLU : Portail Stripe avec détection automatique mobile/desktop**
+### October 19, 2025 - Fix Portal Stripe Mobile + Desktop (Solution Universelle) ✅
+**RÉSOLU : Portail Stripe ouvre dans le même onglet sur tous devices**
 
 **Problème :**
 - Sur mobile (iOS Safari, Chrome Android), le portail Stripe s'ouvrait en about:blank
+- Sur desktop, ouvrir un nouvel onglet causait un reload de la page actuelle
 - Tentative d'ouvrir popup avec `window.open()` causait erreur "popup bloqué"
-- Besoin d'une UX différente selon le device (mobile vs desktop)
 
-**Solution Implémentée (Détection Automatique) :**
-- ✅ **Détection mobile** via user agent + screen width
-- ✅ **Mobile** : Redirection same tab (pas de gestion multi-onglets)
-- ✅ **Desktop** : Nouvel onglet (utilisateur garde sa page ouverte)
-- ✅ **Fallback** : Si popup bloqué sur desktop → same tab redirect
+**Solution Implémentée (Same Tab Universel) :**
+- ✅ **Redirection same tab** sur tous devices (mobile ET desktop)
+- ✅ Stripe redirige automatiquement vers `return_url` après
+- ✅ Pas de gestion multi-onglets compliquée
+- ✅ Pas de reload de page parasite
 
 **Code Pattern (Step4Confirmation.tsx) :**
 ```typescript
-const isMobile = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-};
-
 const data = await postJSON('/api/create-portal-session', {...});
 
-if (isMobile()) {
-  // Mobile : same tab
-  window.location.href = data.url;
-} else {
-  // Desktop : nouvel onglet
-  const newWindow = window.open(data.url, '_blank');
-  if (!newWindow) {
-    // Fallback si popup bloqué
-    window.location.href = data.url;
-  }
-}
+// Redirection dans le même onglet (tous devices)
+window.location.href = data.url;
+
+// L'utilisateur revient automatiquement via return_url après
 ```
 
 **Avantages :**
-- ✅ **UX optimale** selon le device
-- ✅ **Mobile** : Pas de blocage popup, navigation simple
-- ✅ **Desktop** : Utilisateur garde sa page ouverte, peut comparer
-- ✅ **Robuste** : Fallback automatique si popup bloqué
-- ✅ Fonctionne sur tous navigateurs et devices
+- ✅ **Simple et fiable** : Une seule logique pour tous
+- ✅ **Pas de blocage popup** sur mobile ou desktop
+- ✅ **Navigation fluide** : bouton retour fonctionne
+- ✅ **Best practice Stripe** : redirection standard
+- ✅ **Pas de bugs** : pas de reload parasite ou about:blank
 
 ### October 19, 2025 - Optimizations Cleanup & Stabilization ✅
 **RETOUR À LA VERSION STABLE SANS OPTIMISATIONS PROBLÉMATIQUES**
