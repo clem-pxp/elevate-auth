@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { signInWithGoogle, checkEmailExists } from '@/lib/auth-service';
@@ -11,9 +11,10 @@ import { DatePicker } from '@/components/ui/date-picker';
 import ArrowRightIcon from '@/components/Icons/ArrowRightIcon';
 import LoaderIcon from '@/components/Icons/LoaderIcon';
 import { VALIDATION_MESSAGES, PASSWORD_MIN_LENGTH } from '@/lib/constants';
+import { Step1Schema } from '@/lib/client-validation';
 
 
-export function Step1Informations() {
+export const Step1Informations = memo(function Step1Informations() {
   const { completeStep, setStep1Data, accountCreated, getInscriptionData } = useInscriptionStore();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -33,20 +34,16 @@ export function Step1Informations() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.nom) newErrors.nom = VALIDATION_MESSAGES.REQUIRED.nom;
-    if (!formData.prenom) newErrors.prenom = VALIDATION_MESSAGES.REQUIRED.prenom;
-    if (!formData.email) newErrors.email = VALIDATION_MESSAGES.REQUIRED.email;
-    if (!formData.phone) newErrors.phone = VALIDATION_MESSAGES.REQUIRED.phone;
-    if (!formData.birthday) newErrors.birthday = VALIDATION_MESSAGES.REQUIRED.birthday;
-    if (!formData.password) newErrors.password = VALIDATION_MESSAGES.REQUIRED.password;
-    if (formData.password && formData.password.length < PASSWORD_MIN_LENGTH) {
-      newErrors.password = VALIDATION_MESSAGES.PASSWORD_TOO_SHORT;
-    }
-
-    if (Object.keys(newErrors).length > 0) {
+    // Validation avec Zod
+    const validation = Step1Schema.safeParse(formData);
+    
+    if (!validation.success) {
+      const newErrors: Record<string, string> = {};
+      validation.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          newErrors[issue.path[0] as string] = issue.message;
+        }
+      });
       setErrors(newErrors);
       return;
     }
@@ -223,4 +220,4 @@ export function Step1Informations() {
       </form>
     </motion.div>
   );
-}
+});

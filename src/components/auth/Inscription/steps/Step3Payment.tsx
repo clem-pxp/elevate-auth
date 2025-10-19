@@ -1,43 +1,53 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, memo } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
-import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/lib/stripe-client';
+import { postJSON, FetchError } from '@/lib/fetch-utils';
+import { Step3PaymentLoader } from './Step3PaymentLoader';
 
-export function Step3Payment() {
+export const Step3Payment = memo(function Step3Payment() {
   const { getInscriptionData, setStep3Data } = useInscriptionStore();
 
-  // Fonction pour récupérer le client secret
+  // Fonction pour récupérer le client secret avec retry et timeout
   const fetchClientSecret = useCallback(async () => {
     const data = getInscriptionData();
 
-    const response = await fetch('/api/create-checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        priceId: data.stripePriceId,
-        email: data.email,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to create checkout session');
+    if (!data.email || !data.stripePriceId) {
+      throw new Error('Données manquantes pour créer la session de paiement');
     }
 
-    const responseData = await response.json();
-    
-    // Sauvegarder le customer ID
-    if (responseData.customerId) {
-      setStep3Data({
-        stripeCustomerId: responseData.customerId,
-        paymentIntentId: '',
-      });
-    }
+    try {
+      const responseData = await postJSON<{ clientSecret: string; customerId: string }>(
+        '/api/create-checkout-session',
+        {
+          priceId: data.stripePriceId,
+          email: data.email,
+        },
+        {
+          timeout: 15000,
+          retries: 2,
+        }
+      );
 
-    return responseData.clientSecret;
+      // Sauvegarder le customer ID
+      if (responseData.customerId) {
+        setStep3Data({
+          stripeCustomerId: responseData.customerId,
+          paymentIntentId: '',
+        });
+      }
+
+      return responseData.clientSecret;
+    } catch (error) {
+      if (error instanceof FetchError) {
+        throw new Error(
+          `Impossible de créer la session de paiement: ${error.message}`
+        );
+      }
+      throw error;
+    }
   }, [getInscriptionData, setStep3Data]);
 
   return (
@@ -54,15 +64,13 @@ export function Step3Payment() {
         </p>
       </div>
 
-      {/* Embedded Checkout */}
+      {/* Embedded Checkout - Lazy loaded */}
       <div id="checkout" className="min-h-[500px]">
-        <EmbeddedCheckoutProvider
-          stripe={stripePromise}
-          options={{ fetchClientSecret }}
-        >
-          <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
+        <Step3PaymentLoader
+          fetchClientSecret={fetchClientSecret}
+          stripePromise={stripePromise}
+        />
       </div>
     </motion.div>
   );
-}
+});

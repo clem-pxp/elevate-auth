@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { Button } from '@/components/ui/button';
 import { PlanCard } from '@/components/auth/Plan/PlanCard';
 import { PLANS_CONFIG } from '@/lib/plans-config';
+import { getCachedPrices, cachePrices } from '@/lib/stripe-cache';
+import { fetchJSON, FetchError } from '@/lib/fetch-utils';
+import { Step2Schema } from '@/lib/client-validation';
 import type { StripePriceData } from '@/types';
 
-export function Step2Plan() {
+export const Step2Plan = memo(function Step2Plan() {
   const { completeStep, setCurrentStep, setStep2Data, accountCreated, getInscriptionData } = useInscriptionStore();
   
   // Si le compte est créé, charger le plan sélectionné
@@ -20,13 +23,26 @@ export function Step2Plan() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/stripe/prices')
-      .then((res) => res.json())
+    // Vérifier le cache d'abord
+    const cached = getCachedPrices();
+    if (cached && cached.length > 0) {
+      setStripePrices(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    // Sinon, charger depuis l'API
+    fetchJSON<{ prices: StripePriceData[] }>('/api/stripe/prices', {
+      timeout: 10000,
+      retries: 2,
+    })
       .then((data) => {
         setStripePrices(data.prices);
+        cachePrices(data.prices);
         setIsLoading(false);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Failed to load prices:', error);
         setIsLoading(false);
       });
   }, []);
@@ -47,13 +63,22 @@ export function Step2Plan() {
           ? stripePrice.intervalCount * 12
           : stripePrice.intervalCount;
 
-      setStep2Data({
+      const planData = {
         planId: config.id,
         planName: stripePrice.productName,
         planPrice: stripePrice.amount / 100,
         stripePriceId: stripePrice.id,
         billingPeriodMonths: durationInMonths,
-      });
+      };
+
+      // Validation avec Zod
+      const validation = Step2Schema.safeParse(planData);
+      if (!validation.success) {
+        console.error('Invalid plan data:', validation.error);
+        return;
+      }
+
+      setStep2Data(planData);
     }
 
     completeStep(2);
@@ -138,4 +163,4 @@ export function Step2Plan() {
       </div>
     </motion.div>
   );
-}
+});

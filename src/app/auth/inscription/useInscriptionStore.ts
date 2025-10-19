@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { InscriptionData } from '@/types';
+import { isLocalStorageAvailable, cleanupCorruptedStorage } from '@/lib/storage-utils';
 
 interface InscriptionStore {
   currentStep: number;
@@ -36,6 +37,11 @@ const initialData: InscriptionData = {
   billingPeriodMonths: 0,
   stripeCustomerId: '',
 };
+
+// Nettoyer les données corrompues au démarrage
+if (typeof window !== 'undefined' && isLocalStorageAvailable()) {
+  cleanupCorruptedStorage(['inscription-storage']);
+}
 
 export const useInscriptionStore = create<InscriptionStore>()(
   persist(
@@ -85,7 +91,22 @@ export const useInscriptionStore = create<InscriptionStore>()(
     }),
     {
       name: 'inscription-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        if (!isLocalStorageAvailable()) {
+          console.warn('localStorage not available, using fallback');
+          return {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          };
+        }
+        return localStorage;
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          console.log('Store hydrated successfully');
+        }
+      },
     }
   )
 );

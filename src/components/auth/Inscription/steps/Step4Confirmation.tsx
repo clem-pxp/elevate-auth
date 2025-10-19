@@ -7,6 +7,8 @@ import { Check, Loader2 } from 'lucide-react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { createUserAccount } from '@/lib/auth-service';
 import { AppDownloadBadges } from '@/components/global/AppDownloadBadges';
+import { useAsyncLock } from '@/hooks/useAsyncLock';
+import { postJSON, FetchError } from '@/lib/fetch-utils';
 
 // Afficher le label de la période de facturation
 function getBillingPeriodLabel(months: number): string {
@@ -30,33 +32,44 @@ export function Step4Confirmation() {
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const { runExclusive } = useAsyncLock();
 
-  // ⬅️ AJOUTER LA FONCTION ICI (avant le useEffect)
+  // Gérer l'accès au portail Stripe avec protection race condition
   const handleManageSubscription = async () => {
-    setIsRedirecting(true);
+    const result = await runExclusive(async () => {
+      setIsRedirecting(true);
+      setError(null);
 
-    try {
-      const response = await fetch('/api/create-portal-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: userData.stripeCustomerId,
-        }),
-      });
+      try {
+        const data = await postJSON<{ url: string }>(
+          '/api/create-portal-session',
+          {
+            customerId: userData.stripeCustomerId,
+          },
+          {
+            timeout: 10000,
+            retries: 2,
+          }
+        );
 
-      const data = await response.json();
-
-      if (data.url) {
-        // Ouvrir dans un nouvel onglet
-        window.open(data.url, '_blank', 'noopener,noreferrer');
-        setIsRedirecting(false);
-      } else {
-        setError('Impossible de charger le portail Stripe');
+        if (data.url) {
+          window.open(data.url, '_blank', 'noopener,noreferrer');
+        } else {
+          setError('Impossible de charger le portail Stripe');
+        }
+      } catch (error) {
+        if (error instanceof FetchError) {
+          setError(`Erreur: ${error.message}`);
+        } else {
+          setError('Erreur lors de la redirection vers le portail');
+        }
+      } finally {
         setIsRedirecting(false);
       }
-    } catch (error) {
-      setError('Erreur lors de la redirection vers le portail');
-      setIsRedirecting(false);
+    });
+
+    if (result === null) {
+      console.warn('Portal session already being created');
     }
   };
 
