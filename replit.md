@@ -97,6 +97,33 @@ L'application gère maintenant intelligemment les refresh manuels :
 
 Cette logique évite que l'utilisateur reste bloqué dans un état incohérent si il refresh la page manuellement, tout en préservant le flow de retour depuis Stripe.
 
+### October 19, 2025 - Fix EmbeddedCheckout Loading Error ✅
+**RÉSOLU : Formulaire de paiement Stripe ne chargeait pas**
+
+**Problème :**
+- Le formulaire Embedded Checkout ne se chargeait pas au Step 3
+- Erreur Next.js : `Invariant: Expected clientReferenceManifest to be defined. This is a bug in Next.js.`
+- Causé par le lazy loading React du composant Stripe
+
+**Solution Implémentée :**
+- ✅ **Supprimé React.lazy()** du composant EmbeddedCheckout
+- ✅ **Import direct** du composant depuis @stripe/react-stripe-js
+- ✅ Le SDK Stripe gère déjà le chargement asynchrone
+
+**Changements (Step3PaymentLoader.tsx) :**
+```typescript
+// Avant (❌ causait erreur)
+const LazyEmbeddedCheckout = lazy(() => import(...));
+
+// Après (✅ fonctionne)
+import { EmbeddedCheckout } from '@stripe/react-stripe-js';
+```
+
+**Résultat :**
+- ✅ Plus d'erreur Next.js
+- ✅ Formulaire de paiement charge correctement
+- ✅ Suspense toujours actif pour l'état de chargement
+
 ### October 19, 2025 - Fix Portal Stripe Mobile (Popup Blocker) ✅
 **RÉSOLU : Portail Stripe bloqué sur mobile**
 

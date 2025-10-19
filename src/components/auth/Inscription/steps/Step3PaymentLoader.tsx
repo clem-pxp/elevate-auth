@@ -1,14 +1,7 @@
 'use client';
 
-import { lazy, Suspense } from 'react';
-import { EmbeddedCheckoutProvider } from '@stripe/react-stripe-js';
-
-// Lazy load du composant EmbeddedCheckout
-const LazyEmbeddedCheckout = lazy(() => 
-  import('@stripe/react-stripe-js').then(module => ({
-    default: module.EmbeddedCheckout
-  }))
-);
+import { Suspense } from 'react';
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 
 interface Step3PaymentLoaderProps {
   fetchClientSecret: () => Promise<string>;
@@ -31,7 +24,7 @@ export function Step3PaymentLoader({ fetchClientSecret, stripePromise }: Step3Pa
         stripe={stripePromise}
         options={{ fetchClientSecret }}
       >
-        <LazyEmbeddedCheckout />
+        <EmbeddedCheckout />
       </EmbeddedCheckoutProvider>
     </Suspense>
   );
