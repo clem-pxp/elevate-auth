@@ -3,6 +3,7 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  fetchSignInMethodsForEmail,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
@@ -19,11 +20,23 @@ export async function checkEmailExists(email: string): Promise<boolean> {
     const querySnapshot = await getDocs(q);
     
     const exists = !querySnapshot.empty;
-    logger.debug('Email check', { email, exists });
+    logger.debug('Email check in Firestore', { email, exists });
     
     return exists;
   } catch (error) {
     logger.error('Error checking email', error);
+    return false;
+  }
+}
+
+export async function checkEmailExistsInAuth(email: string): Promise<boolean> {
+  try {
+    const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+    const exists = signInMethods.length > 0;
+    logger.debug('Email check in Firebase Auth', { email, exists, methods: signInMethods });
+    return exists;
+  } catch (error) {
+    logger.error('Error checking email in Firebase Auth', error);
     return false;
   }
 }
@@ -118,6 +131,16 @@ export async function createUserAccount(
       userId = currentUser.uid;
       logger.debug('Google user already connected', { userId });
     } else {
+      // Vérifier Firebase Auth JUSTE AVANT de créer le compte
+      const emailExistsInAuth = await checkEmailExistsInAuth(data.email);
+      if (emailExistsInAuth) {
+        logger.warn('Account creation blocked - email exists in Firebase Auth', { email: data.email });
+        return { 
+          success: false, 
+          error: 'Cet email est déjà utilisé. Veuillez vous connecter.' 
+        };
+      }
+      
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         data.email,
