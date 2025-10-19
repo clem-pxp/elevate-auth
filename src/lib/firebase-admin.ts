@@ -1,5 +1,5 @@
 import admin from 'firebase-admin';
-import { env } from './env';
+import { serverEnv } from './server-env';
 
 let adminApp: admin.app.App;
 let adminAuth: admin.auth.Auth;
@@ -7,9 +7,9 @@ let adminAuth: admin.auth.Auth;
 function initializeAdminApp() {
   if (admin.apps.length === 0) {
     const serviceAccount = {
-      projectId: env.firebase.projectId,
-      clientEmail: env.firebase.clientEmail,
-      privateKey: env.firebase.privateKey,
+      projectId: serverEnv.firebase.projectId,
+      clientEmail: serverEnv.firebase.clientEmail,
+      privateKey: serverEnv.firebase.privateKey,
     };
 
     adminApp = admin.initializeApp({

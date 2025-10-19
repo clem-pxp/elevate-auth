@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import { stripe } from '@/lib/stripe-server';
 import { PLANS_CONFIG } from '@/lib/plans-config';
 import { logger } from '@/lib/logger';
 import Stripe from 'stripe';

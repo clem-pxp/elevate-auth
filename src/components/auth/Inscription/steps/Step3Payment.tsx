@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { Button } from '@/components/ui/button';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { stripePromise } from '@/lib/stripe';
+import { stripePromise } from '@/lib/stripe-client';
 import { STRIPE_APPEARANCE } from '@/lib/constants';
 
 // Composant form

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import { stripe } from '@/lib/stripe-server';
 import { createPaymentIntentSchema } from '@/lib/validation';
 import { isValidPriceId } from '@/lib/plans-config';
 import { logger } from '@/lib/logger';

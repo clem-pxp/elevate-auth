@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import { stripe } from '@/lib/stripe-server';
 import { createPortalSessionSchema } from '@/lib/validation';
-import { env } from '@/lib/env';
+import { serverEnv } from '@/lib/server-env';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${env.app.url}/auth/inscription?success=true`,
+      return_url: `${serverEnv.app.url}/auth/inscription?success=true`,
     });
 
     logger.info('Portal session created', { customerId });
