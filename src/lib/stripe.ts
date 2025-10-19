@@ -1,10 +1,10 @@
 import { loadStripe } from '@stripe/stripe-js';
 import Stripe from 'stripe';
+import { env, clientEnv } from './env';
 
-// Client-side Stripe (pour le frontend)
-export const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-);
+export const stripePromise = loadStripe(clientEnv.stripe.publishableKey);
 
-// Server-side Stripe (pour les API Routes)
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const stripe = new Stripe(env.stripe.secretKey, {
+  apiVersion: '2025-09-30.clover',
+  typescript: true,
+});

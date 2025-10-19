@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { Button } from '@/components/ui/button';
-import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+import { stripePromise } from '@/lib/stripe';
+import { STRIPE_APPEARANCE } from '@/lib/constants';
 
 // Composant form
 function CheckoutForm() {
@@ -39,9 +38,6 @@ function CheckoutForm() {
       setErrorMessage(error.message || 'Une erreur est survenue');
       setIsLoading(false);
     } else {
-      console.log('✅ Paiement réussi !');
-
-      // Sauvegarder le Payment Intent ID ⬅️ NOUVEAU
       setStep3Data({
         paymentIntentId: paymentIntent.id,
       });
@@ -83,44 +79,33 @@ export function Step3Payment() {
   const { getInscriptionData, setStep3Data } = useInscriptionStore();
 
   useEffect(() => {
-  const data = getInscriptionData();
-  
-  if (!data.stripePriceId) {
-    console.error('❌ Pas de stripePriceId dans le store');
-    return;
-  }
-  
-  console.log('🔑 stripePriceId:', data.stripePriceId);
-  console.log('📧 email:', data.email);
-  
-  fetch('/api/create-subscription', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      priceId: data.stripePriceId,
-      email: data.email,
-    }),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      console.log('📦 API Response:', data); // ⬅️ AJOUTER ce log
-      setClientSecret(data.clientSecret);
-      
-      if (data.subscriptionId) {
-        console.log('✅ Subscription créée:', data.subscriptionId);
-      }
-      
-      if (data.customerId) {
-        console.log('✅ Customer ID reçu:', data.customerId);
-        // Sauvegarder le Customer ID dans le store
-        setStep3Data({
-          paymentIntentId: '', // On le mettra après le paiement
-          stripeCustomerId: data.customerId,
-        });
-      }
+    const data = getInscriptionData();
+    
+    if (!data.stripePriceId) {
+      return;
+    }
+    
+    fetch('/api/create-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        priceId: data.stripePriceId,
+        email: data.email,
+      }),
     })
-    .catch((err) => console.error('❌ Subscription error:', err));
-}, [getInscriptionData]);
+      .then((res) => res.json())
+      .then((data) => {
+        setClientSecret(data.clientSecret);
+        
+        if (data.customerId) {
+          setStep3Data({
+            paymentIntentId: '',
+            stripeCustomerId: data.customerId,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [getInscriptionData, setStep3Data]);
 
   if (!clientSecret) {
     return (
@@ -146,42 +131,7 @@ export function Step3Payment() {
         stripe={stripePromise}
         options={{
           clientSecret,
-          appearance: {
-            theme: 'stripe',
-            variables: {
-              colorPrimary: '#1a2e2c',
-              colorBackground: '#ffffff',
-              colorText: '#0a0a0a',
-              colorDanger: '#ef4444',
-              fontFamily: 'Geist, system-ui, sans-serif',
-              spacingUnit: '4px',
-              borderRadius: '10px',
-              fontSizeBase: '16px',
-            },
-            rules: {
-              '.Input': {
-                border: '0.5px solid #e5e7eb',
-                boxShadow: '0px 0px 0px 1px rgba(9, 23, 78, 0.04), 0px 1px 1px -0.5px rgba(9, 23, 78, 0.04)',
-                padding: '12px',
-              },
-              '.Input:focus': {
-                border: '1px solid #1a2e2c',
-                boxShadow: '0 0 0 3px rgba(26, 46, 44, 0.1)',
-              },
-              '.Label': {
-                fontSize: '14px',
-                fontWeight: '500',
-                marginBottom: '8px',
-              },
-              '.Tab': {
-                border: 'none',
-                padding: '12px',
-              },
-              '.TabLabel': {
-                fontWeight: '500',
-              },
-            },
-          },
+          appearance: STRIPE_APPEARANCE,
         }}
       >
         <CheckoutForm />

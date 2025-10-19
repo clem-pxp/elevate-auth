@@ -1,21 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
+import { createSubscriptionSchema } from '@/lib/validation';
+import { isValidPriceId } from '@/lib/plans-config';
+import { logger } from '@/lib/logger';
+import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
   try {
-    const { priceId, email } = await request.json();
+    const body = await request.json();
+    const validation = createSubscriptionSchema.safeParse(body);
 
-    console.log('📧 Creating subscription for:', email);
-    console.log('🔑 Price ID:', priceId);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: validation.error.issues },
+        { status: 400 }
+      );
+    }
 
-    // 1. Créer un Customer Stripe
+    const { priceId, email } = validation.data;
+
+    if (!isValidPriceId(priceId)) {
+      logger.warn('Invalid price ID attempted', { priceId, email });
+      return NextResponse.json(
+        { error: 'Invalid plan selected' },
+        { status: 400 }
+      );
+    }
+
+    logger.info('Creating subscription', { email, priceId });
+
     const customer = await stripe.customers.create({
-      email: email,
+      email,
     });
 
-    console.log('✅ Customer created:', customer.id);
+    logger.debug('Customer created', { customerId: customer.id });
 
-    // 2. Créer une Subscription
     const subscription = await stripe.subscriptions.create({
       customer: customer.id,
       items: [{ price: priceId }],
@@ -26,49 +45,63 @@ export async function POST(request: NextRequest) {
       expand: ['latest_invoice.payment_intent'],
     });
 
-    console.log('✅ Subscription created:', subscription.id);
+    logger.debug('Subscription created', { subscriptionId: subscription.id });
 
-    // 3. Récupérer l'invoice
     const invoice = subscription.latest_invoice;
 
     if (!invoice || typeof invoice === 'string') {
       throw new Error('Latest invoice not found');
     }
 
-    // 4. Créer manuellement le Payment Intent si pas encore créé
     let clientSecret: string;
 
-    // @ts-ignore - L'invoice peut avoir payment_intent
-    if (invoice.payment_intent && typeof invoice.payment_intent !== 'string') {
-      // @ts-ignore
-      clientSecret = invoice.payment_intent.client_secret;
+    const expandedInvoice = invoice as Stripe.Invoice & {
+      payment_intent?: Stripe.PaymentIntent | string;
+    };
+    const paymentIntent = expandedInvoice.payment_intent;
+
+    if (paymentIntent && typeof paymentIntent !== 'string') {
+      clientSecret = paymentIntent.client_secret || '';
     } else {
-      // Créer un Payment Intent manuellement
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: invoice.amount_due,
-        currency: invoice.currency,
+      const newPaymentIntent = await stripe.paymentIntents.create({
+        amount: expandedInvoice.amount_due,
+        currency: expandedInvoice.currency,
         customer: customer.id,
         metadata: {
           subscription_id: subscription.id,
-          invoice_id: invoice.id,
+          invoice_id: expandedInvoice.id,
         },
       });
 
-      clientSecret = paymentIntent.client_secret!;
-      console.log('✅ Payment Intent créé manuellement:', paymentIntent.id);
+      clientSecret = newPaymentIntent.client_secret || '';
+      logger.debug('Payment Intent created manually', { 
+        paymentIntentId: newPaymentIntent.id 
+      });
     }
 
-    console.log('✅ Client Secret récupéré');
+    if (!clientSecret) {
+      throw new Error('Failed to retrieve client secret');
+    }
+
+    logger.info('Subscription completed', { 
+      subscriptionId: subscription.id,
+      customerId: customer.id 
+    });
 
     return NextResponse.json({
       subscriptionId: subscription.id,
-      clientSecret: clientSecret,
+      clientSecret,
       customerId: customer.id,
     });
-  } catch (error: any) {
-    console.error('❌ Subscription error:', error);
+  } catch (error) {
+    logger.error('Subscription error', error);
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Erreur lors de la création de l'abonnement";
+
     return NextResponse.json(
-      { error: error.message || "Erreur lors de la création de l'abonnement" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

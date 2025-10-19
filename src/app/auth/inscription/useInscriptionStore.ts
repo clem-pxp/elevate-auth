@@ -1,24 +1,5 @@
 import { create } from 'zustand';
-
-interface InscriptionData {
-  // Step 1
-  nom: string;
-  prenom: string;
-  email: string;
-  phone: string;
-  birthday: Date | undefined;
-  password: string;
-  
-  // Step 2
-  planId: string;
-  planName: string;
-  planPrice: number;
-  stripePriceId: string;
-  billingPeriodMonths: number;
-  // Step 3
-  paymentIntentId: string;
-  stripeCustomerId: string;
-}
+import type { InscriptionData } from '@/types';
 
 interface InscriptionStore {
   currentStep: number;
@@ -89,6 +70,7 @@ export const useInscriptionStore = create<InscriptionStore>((set, get) => ({
   resetStore: () => set({
     currentStep: 1,
     completedSteps: [],
+    maxStepReached: 1,
     inscriptionData: initialData,
   }),
 }));

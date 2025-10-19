@@ -5,41 +5,8 @@ import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { Button } from '@/components/ui/button';
 import { PlanCard } from '@/components/auth/Plan/PlanCard';
-
-// Configuration minimale - JUSTE le visuel
-const plansConfig = [
-  {
-    stripePriceId: 'price_1SJbhV1H0zcejTt5FrRJtZzQ',
-    id: 'mensuel',
-    variant: 'green' as const,
-    discount: null,
-    description: 'Facturé mensuellement.',
-  },
-  {
-    stripePriceId: 'price_1SJbjH1H0zcejTt5LCoNTjUM',
-    id: 'semestriel',
-    variant: 'pink' as const,
-    discount: '12% de réduction',
-    description: 'Facturé semestriellement.',
-  },
-  {
-    stripePriceId: 'price_1SJbjr1H0zcejTt5bnVqtmJJ',
-    id: 'annuel',
-    variant: 'gray' as const,
-    discount: '30% de réduction',
-    description: 'Facturé annuellement.',
-  },
-];
-
-interface StripePriceData {
-  id: string;
-  amount: number;
-  currency: string;
-  interval: 'month' | 'year';
-  intervalCount: number;
-  productName: string;
-  productId: string;
-}
+import { PLANS_CONFIG } from '@/lib/plans-config';
+import type { StripePriceData } from '@/types';
 
 export function Step2Plan() {
   const { completeStep, setCurrentStep, setStep2Data } = useInscriptionStore();
@@ -48,17 +15,14 @@ export function Step2Plan() {
   const [stripePrices, setStripePrices] = useState<StripePriceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Récupérer les infos Stripe au chargement
   useEffect(() => {
     fetch('/api/stripe/prices')
       .then((res) => res.json())
       .then((data) => {
-        console.log('✅ Prices loaded:', data.prices);
         setStripePrices(data.prices);
         setIsLoading(false);
       })
-      .catch((err) => {
-        console.error('❌ Error loading prices:', err);
+      .catch(() => {
         setIsLoading(false);
       });
   }, []);
@@ -69,7 +33,7 @@ export function Step2Plan() {
   };
 
   const handleContinue = () => {
-    const config = plansConfig.find((c) => c.id === selectedPlan);
+    const config = Object.values(PLANS_CONFIG).find((c) => c.id === selectedPlan);
     const stripePrice = stripePrices.find((p) => p.id === config?.stripePriceId);
 
     if (stripePrice && config) {
@@ -82,9 +46,9 @@ export function Step2Plan() {
       setStep2Data({
         planId: config.id,
         planName: stripePrice.productName,
-        planPrice: stripePrice.amount / 100, // Total en euros
+        planPrice: stripePrice.amount / 100,
         stripePriceId: stripePrice.id,
-        billingPeriodMonths: durationInMonths, // ⬅️ Changé de billingPeriod
+        billingPeriodMonths: durationInMonths,
       });
     }
 
@@ -105,8 +69,7 @@ export function Step2Plan() {
     return `${pricePerMonth.toFixed(2)}€/mois`;
   };
 
-  // Fusionner config avec les données Stripe
-  const plans = plansConfig.map((config) => {
+  const plans = Object.values(PLANS_CONFIG).map((config) => {
     const stripePrice = stripePrices.find((p) => p.id === config.stripePriceId);
     return {
       id: config.id,

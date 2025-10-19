@@ -1,23 +1,15 @@
 import { 
   createUserWithEmailAndPassword, 
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { auth, db } from './firebase';
-
-interface UserData {
-  nom: string;
-  prenom: string;
-  email: string;
-  phone: string;
-  birthday: Date | undefined;
-  planId: string;
-  planName: string;
-  planPrice: number;
-  paymentIntentId: string;
-}
+import { logger } from './logger';
+import { FIREBASE_ERROR_CODES } from './constants';
+import type { UserData, AuthResult, CreateAccountResult } from '@/types';
 
 export async function checkEmailExists(email: string): Promise<boolean> {
   try {
@@ -26,37 +18,41 @@ export async function checkEmailExists(email: string): Promise<boolean> {
     const querySnapshot = await getDocs(q);
     
     const exists = !querySnapshot.empty;
-    console.log(`🔍 Email ${email} existe dans Firestore ?`, exists);
+    logger.debug('Email check', { email, exists });
     
     return exists;
   } catch (error) {
-    console.error('❌ Erreur vérification email:', error);
+    logger.error('Error checking email', error);
     return false;
   }
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(): Promise<AuthResult> {
   try {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
     
-    console.log('✅ Google Sign-In réussi:', result.user.uid);
+    logger.info('Google Sign-In successful', { uid: result.user.uid });
     
     return {
       success: true,
-      user: result.user,
+      user: {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+      },
     };
-  } catch (error: unknown) {
-    console.error('❌ Google Sign-In error:', error);
+  } catch (error) {
+    logger.error('Google Sign-In error', error);
     
     let errorMessage = 'Erreur lors de la connexion';
     
     if (error && typeof error === 'object' && 'code' in error) {
       const firebaseError = error as { code: string };
       
-      if (firebaseError.code === 'auth/popup-closed-by-user') {
+      if (firebaseError.code === FIREBASE_ERROR_CODES.POPUP_CLOSED) {
         errorMessage = 'Connexion annulée';
-      } else if (firebaseError.code === 'auth/account-exists-with-different-credential') {
+      } else if (firebaseError.code === FIREBASE_ERROR_CODES.ACCOUNT_EXISTS) {
         errorMessage = 'Un compte existe déjà avec cet email';
       }
     }
@@ -68,7 +64,10 @@ export async function signInWithGoogle() {
   }
 }
 
-export async function createUserAccount(data: UserData, password?: string) {
+export async function createUserAccount(
+  data: UserData, 
+  password?: string
+): Promise<CreateAccountResult> {
   try {
     let userId: string;
     
@@ -78,7 +77,7 @@ export async function createUserAccount(data: UserData, password?: string) {
         throw new Error('Utilisateur non connecté');
       }
       userId = currentUser.uid;
-      console.log('✅ Utilisateur Google déjà connecté:', userId);
+      logger.debug('Google user already connected', { userId });
     } else {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -86,7 +85,7 @@ export async function createUserAccount(data: UserData, password?: string) {
         password
       );
       userId = userCredential.user.uid;
-      console.log('✅ Compte Firebase créé:', userId);
+      logger.info('Firebase account created', { userId });
     }
 
     await setDoc(doc(db, 'users', userId), {
@@ -104,21 +103,21 @@ export async function createUserAccount(data: UserData, password?: string) {
       updatedAt: serverTimestamp(),
     });
 
-    console.log('✅ Données sauvegardées dans Firestore');
+    logger.info('User data saved to Firestore', { userId });
     return { success: true, userId };
-  } catch (error: unknown) {
-    console.error('❌ Erreur création compte:', error);
+  } catch (error) {
+    logger.error('Error creating account', error);
     
     let errorMessage = 'Une erreur est survenue';
     
     if (error && typeof error === 'object' && 'code' in error) {
       const firebaseError = error as { code: string };
       
-      if (firebaseError.code === 'auth/email-already-in-use') {
+      if (firebaseError.code === FIREBASE_ERROR_CODES.EMAIL_IN_USE) {
         errorMessage = 'Cet email est déjà utilisé';
-      } else if (firebaseError.code === 'auth/weak-password') {
+      } else if (firebaseError.code === FIREBASE_ERROR_CODES.WEAK_PASSWORD) {
         errorMessage = 'Le mot de passe est trop faible';
-      } else if (firebaseError.code === 'auth/invalid-email') {
+      } else if (firebaseError.code === FIREBASE_ERROR_CODES.INVALID_EMAIL) {
         errorMessage = 'Email invalide';
       }
     }

@@ -1,28 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
+import { createPortalSessionSchema } from '@/lib/validation';
+import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
-    const { customerId } = await request.json();
+    const body = await request.json();
+    const validation = createPortalSessionSchema.safeParse(body);
 
-    if (!customerId) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Customer ID requis' },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       );
     }
 
-    // Créer une session Customer Portal
+    const { customerId } = validation.data;
+
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/auth/inscription?success=true`,
+      return_url: `${env.app.url}/auth/inscription?success=true`,
     });
 
+    logger.info('Portal session created', { customerId });
+
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
-    console.error('❌ Portal session error:', error);
+  } catch (error) {
+    logger.error('Portal session error', error);
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Erreur lors de la création de la session';
+
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de la création de la session' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -10,9 +10,8 @@ import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import ArrowRightIcon from '@/components/Icons/ArrowRightIcon';
 import LoaderIcon from '@/components/Icons/LoaderIcon';
+import { VALIDATION_MESSAGES, PASSWORD_MIN_LENGTH } from '@/lib/constants';
 
-import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
 
 export function Step1Informations() {
   const { completeStep, setStep1Data } = useInscriptionStore();
@@ -33,14 +32,14 @@ export function Step1Informations() {
     // Validation
     const newErrors: Record<string, string> = {};
 
-    if (!formData.nom) newErrors.nom = 'Nom requis';
-    if (!formData.prenom) newErrors.prenom = 'Prénom requis';
-    if (!formData.email) newErrors.email = 'Email requis';
-    if (!formData.phone) newErrors.phone = 'Téléphone requis';
-    if (!formData.birthday) newErrors.birthday = 'Date de naissance requise';
-    if (!formData.password) newErrors.password = 'Mot de passe requis';
-    if (formData.password && formData.password.length < 6) {
-      newErrors.password = 'Minimum 6 caractères';
+    if (!formData.nom) newErrors.nom = VALIDATION_MESSAGES.REQUIRED.nom;
+    if (!formData.prenom) newErrors.prenom = VALIDATION_MESSAGES.REQUIRED.prenom;
+    if (!formData.email) newErrors.email = VALIDATION_MESSAGES.REQUIRED.email;
+    if (!formData.phone) newErrors.phone = VALIDATION_MESSAGES.REQUIRED.phone;
+    if (!formData.birthday) newErrors.birthday = VALIDATION_MESSAGES.REQUIRED.birthday;
+    if (!formData.password) newErrors.password = VALIDATION_MESSAGES.REQUIRED.password;
+    if (formData.password && formData.password.length < PASSWORD_MIN_LENGTH) {
+      newErrors.password = VALIDATION_MESSAGES.PASSWORD_TOO_SHORT;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -48,24 +47,15 @@ export function Step1Informations() {
       return;
     }
 
-    console.log('🔍 Vérification email:', formData.email); // ⬅️ AJOUTER
-
-    // Vérifier si l'email existe déjà
     setIsLoading(true);
     const emailExists = await checkEmailExists(formData.email);
     setIsLoading(false);
 
-    console.log('📧 Email existe ?', emailExists); // ⬅️ AJOUTER
-
     if (emailExists) {
-      console.log('❌ Email déjà utilisé, blocage'); // ⬅️ AJOUTER
-      setErrors({ email: 'Cet email est déjà utilisé' });
+      setErrors({ email: VALIDATION_MESSAGES.EMAIL_EXISTS });
       return;
     }
 
-    console.log('✅ Email OK, passage à step 2'); // ⬅️ AJOUTER
-
-    // Sauvegarder dans le store
     setStep1Data({
       nom: formData.nom,
       prenom: formData.prenom,
@@ -75,7 +65,6 @@ export function Step1Informations() {
       password: formData.password,
     });
 
-    console.log('✅ Step 1 data saved');
     completeStep(1);
   };
 
@@ -86,16 +75,14 @@ export function Step1Informations() {
     const result = await signInWithGoogle();
     
     if (result.success && result.user) {
-      // ⬅️ AJOUTER : Vérifier si l'email existe déjà
       const emailExists = await checkEmailExists(result.user.email || '');
       
       if (emailExists) {
-        setErrors({ email: 'Cet email est déjà utilisé. Connectez-vous plutôt.' });
+        setErrors({ email: VALIDATION_MESSAGES.EMAIL_EXISTS_LOGIN });
         setIsLoading(false);
         return;
       }
       
-      // Remplir automatiquement les données
       const nameParts = result.user.displayName?.split(' ') || ['', ''];
       
       setStep1Data({
@@ -104,17 +91,15 @@ export function Step1Informations() {
         email: result.user.email || '',
         phone: '',
         birthday: undefined,
-        password: '', // Pas de mot de passe pour Google
+        password: '',
       });
       
-      console.log('✅ Données Google sauvegardées');
       completeStep(1);
     } else {
-      setErrors({ email: result.error || 'Erreur lors de la connexion Google' });
+      setErrors({ email: result.error || VALIDATION_MESSAGES.GOOGLE_ERROR });
     }
   } catch (error) {
-    console.error('❌ Google Sign-In error:', error);
-    setErrors({ email: 'Erreur lors de la connexion Google' });
+    setErrors({ email: VALIDATION_MESSAGES.GOOGLE_ERROR });
   }
   
   setIsLoading(false);
@@ -191,7 +176,7 @@ export function Step1Informations() {
         <div className="space-y-2">
           <Label htmlFor="password">Mot de passe</Label>
           <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="****************" />
-          <p className="text-xs text-gray-500">Minimum 6 caractères</p>
+          <p className="text-xs text-gray-500">Minimum {PASSWORD_MIN_LENGTH} caractères</p>
           {errors.password && <p className="text-xs text-red-600">{errors.password}</p>}
         </div>
 
