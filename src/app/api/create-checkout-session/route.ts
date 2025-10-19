@@ -28,12 +28,20 @@ export async function POST(request: NextRequest) {
 
     logger.info('Creating Embedded Checkout session', { email, priceId });
 
-    // Créer ou récupérer le client
-    const customer = await stripe.customers.create({
+    // Chercher un customer existant ou en créer un nouveau
+    const existingCustomers = await stripe.customers.list({
       email,
+      limit: 1,
     });
 
-    logger.debug('Customer created', { customerId: customer.id });
+    const customer = existingCustomers.data.length > 0
+      ? existingCustomers.data[0]
+      : await stripe.customers.create({ email });
+
+    logger.debug('Customer retrieved/created', { 
+      customerId: customer.id,
+      isNew: existingCustomers.data.length === 0 
+    });
 
     // Créer la session Checkout en mode embedded
     const session = await stripe.checkout.sessions.create({

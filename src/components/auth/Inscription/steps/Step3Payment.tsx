@@ -20,10 +20,10 @@ export function Step3Payment() {
         .then((res) => res.json())
         .then((data) => {
           if (data.status === 'complete') {
-            // Paiement réussi !
+            // Paiement réussi ! Sauvegarder les IDs réels
             setStep3Data({
               stripeCustomerId: data.customer_id || '',
-              paymentIntentId: sessionId,
+              paymentIntentId: data.subscription_id || sessionId,
             });
             completeStep(3);
             
@@ -49,6 +49,11 @@ export function Step3Payment() {
         email: data.email,
       }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create checkout session');
+    }
 
     const responseData = await response.json();
     
