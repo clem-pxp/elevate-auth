@@ -47,35 +47,54 @@ The application utilizes React 19.1.0 with Tailwind CSS 4 and Radix UI component
 ## Recent Changes
 
 ### October 19, 2025 - Protection contre les Comptes Firebase Auth en Double ✅
-**FIX CRITIQUE : Empêcher Firebase Auth de créer plusieurs comptes avec le même email**
+**FIX CRITIQUE : Empêcher les doublons et l'accès non autorisé via Google Sign-In**
 
-**Problème** :
-- Firebase Auth créait des comptes multiples avec le même email (UIDs différents)
-- L'option Firebase "Associer les comptes" ne **prévient pas** les doublons, elle les **lie** après création
-- Race condition entre Step1 (vérification) et Step4 (création du compte)
+**Problème Principal - Accès gratuit via Google** :
+- Utilisateur s'inscrit avec `email@example.com` + password → UID: `ABC123` → **Paie** ✅
+- Quelqu'un clique "Connexion avec Google" avec `email@example.com`
+- Firebase Auth crée un **NOUVEAU** compte Google → UID: `XYZ789` (différent!)
+- Ancien code vérifiait juste si email existe → Trouvait le compte payé
+- Donnait accès au **mauvais UID** → **Accès gratuit sans payer** 💥
 
-**Solution** :
-- ✅ **Nouvelle fonction checkEmailExistsInAuth()** : Vérifie dans Firebase Auth via `fetchSignInMethodsForEmail`
-- ✅ **Double vérification** : Step1 (UX immédiat) + createUserAccount() (avant création)
-- ✅ **Élimination race condition** : Vérification JUSTE AVANT `createUserWithEmailAndPassword()`
-- ✅ **Logging** : Avertissement si tentative de doublon détectée
+**Problème Secondaire - Race Condition** :
+- Race condition entre Step1 (vérification Firestore) et Step4 (création compte Firebase Auth)
+- Firebase Auth peut créer des doublons même avec vérification
+
+**Solution Complète** :
+
+**1️⃣ Protection Connexion Google (Login.tsx)** :
+- ✅ Fonction `getUserUidByEmail()` : Récupère le UID Firestore d'un email
+- ✅ Après Google Sign-In, compare `UID Google` avec `UID Firestore`
+- ✅ Si UID différent → **Supprime compte Google** + Erreur "Ce compte existe avec un mot de passe"
+- ✅ Si pas de compte → **Supprime compte Google** + Erreur "Aucun compte trouvé"
+- ✅ Si UID identique → Connexion autorisée ✅
+
+**2️⃣ Protection Inscription (Step1 + createUserAccount)** :
+- ✅ Fonction `checkEmailExistsInAuth()` : Vérifie Firebase Auth via `fetchSignInMethodsForEmail`
+- ✅ Double vérification : Step1 (UX) + createUserAccount() (avant création)
+- ✅ Élimination race condition : Vérification JUSTE AVANT `createUserWithEmailAndPassword()`
 
 **Fichiers Modifiés :**
-- `src/lib/auth-service.ts` : Ajout checkEmailExistsInAuth + vérification dans createUserAccount
+- `src/lib/auth-service.ts` : Ajout getUserUidByEmail, checkEmailExistsInAuth
+- `src/components/auth/Login.tsx` : Vérification UID + suppression doublons Google
 - `src/components/auth/Inscription/steps/Step1Informations.tsx` : Utilise checkEmailExistsInAuth
 
-**Code Pattern (createUserAccount) :**
+**Code Pattern (Login.tsx) :**
 ```typescript
-// Vérifier Firebase Auth JUSTE AVANT de créer le compte
-const emailExistsInAuth = await checkEmailExistsInAuth(data.email);
-if (emailExistsInAuth) {
-  logger.warn('Account creation blocked - email exists in Firebase Auth');
-  return { success: false, error: 'Cet email est déjà utilisé.' };
+const googleUid = result.user.uid;
+const registeredUid = await getUserUidByEmail(userEmail);
+
+if (googleUid !== registeredUid) {
+  // Doublon détecté - Supprimer et bloquer
+  await deleteUser(auth.currentUser);
+  setErrors({ email: 'Ce compte existe avec un mot de passe.' });
+  return;
 }
-const userCredential = await createUserWithEmailAndPassword(auth, data.email, password);
+// UID correspond - Accès autorisé
+router.push('/compte');
 ```
 
-**Note** : Login.tsx garde `checkEmailExists` (Firestore) car il vérifie que l'inscription est complète (toutes les données).
+**Sécurité** : Seul le UID inscrit (qui a payé) peut accéder à `/compte`.
 
 ### October 19, 2025 - Séparation Inscription/Connexion Google ✅
 **MODIFICATION : Google Sign-In uniquement pour la connexion, pas l'inscription**
