@@ -1,41 +1,13 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { motion } from 'motion/react';
 import { useInscriptionStore } from '@/app/auth/inscription/useInscriptionStore';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/lib/stripe-client';
 
 export function Step3Payment() {
-  const { getInscriptionData, completeStep, setStep3Data } = useInscriptionStore();
-
-  // Vérifier si on revient de Stripe (session_id dans l'URL)
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
-
-    if (sessionId) {
-      // Récupérer le statut de la session
-      fetch(`/api/checkout-status?session_id=${sessionId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === 'complete') {
-            // Paiement réussi ! Sauvegarder les IDs réels
-            setStep3Data({
-              stripeCustomerId: data.customer_id || '',
-              paymentIntentId: data.subscription_id || sessionId,
-            });
-            completeStep(3);
-            
-            // Nettoyer l'URL
-            window.history.replaceState({}, '', '/auth/inscription');
-          }
-        })
-        .catch((error) => {
-          console.error('Error checking session status:', error);
-        });
-    }
-  }, [completeStep, setStep3Data]);
+  const { getInscriptionData, setStep3Data } = useInscriptionStore();
 
   // Fonction pour récupérer le client secret
   const fetchClientSecret = useCallback(async () => {
