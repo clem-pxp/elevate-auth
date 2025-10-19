@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { deleteUser } from 'firebase/auth';
-import { signInWithEmail, signInWithGoogle, checkEmailExists } from '@/lib/auth-service';
+import { signInWithEmail, signInWithGoogle, getUserUidByEmail } from '@/lib/auth-service';
 import { auth } from '@/lib/firebase';
 import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
@@ -57,18 +57,21 @@ export function Login() {
       const result = await signInWithGoogle();
       
       if (result.success && result.user) {
-        // Vérifier que le compte existe dans Firestore
-        const accountExists = await checkEmailExists(result.user.email || '');
+        const userEmail = result.user.email || '';
+        const googleUid = result.user.uid;
         
-        if (!accountExists) {
-          // Supprimer le compte Google qui vient d'être créé pour éviter les doublons
+        // Récupérer le UID du compte inscrit dans Firestore
+        const registeredUid = await getUserUidByEmail(userEmail);
+        
+        if (!registeredUid) {
+          // Aucun compte inscrit avec cet email - supprimer le compte Google créé
           const currentUser = auth.currentUser;
           if (currentUser) {
             try {
               await deleteUser(currentUser);
-              logger.info('Deleted Google account - user not registered', { 
-                email: result.user.email,
-                uid: currentUser.uid 
+              logger.info('Deleted Google account - no registered account found', { 
+                email: userEmail,
+                googleUid 
               });
             } catch (deleteError) {
               logger.error('Failed to delete Google account', deleteError);
@@ -80,6 +83,30 @@ export function Login() {
           return;
         }
         
+        // Vérifier que le UID Google correspond au UID inscrit
+        if (googleUid !== registeredUid) {
+          // Doublon détecté : un compte existe avec email/password, mais Google a créé un nouveau UID
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            try {
+              await deleteUser(currentUser);
+              logger.warn('Deleted duplicate Google account', { 
+                email: userEmail,
+                googleUid,
+                registeredUid,
+                message: 'Email registered with password, cannot login with Google'
+              });
+            } catch (deleteError) {
+              logger.error('Failed to delete duplicate Google account', deleteError);
+            }
+          }
+          
+          setErrors({ email: 'Ce compte existe avec un mot de passe. Connectez-vous avec votre email et mot de passe.' });
+          setIsLoading(false);
+          return;
+        }
+        
+        // UID correspond - connexion autorisée
         router.push('/compte');
       } else {
         setErrors({ email: result.error || 'Erreur lors de la connexion Google' });
