@@ -88,12 +88,22 @@ export async function createUserAccount(
       logger.info('Firebase account created', { userId });
     }
 
+    // Gérer birthday (peut être Date ou string depuis localStorage)
+    let birthdayISO = null;
+    if (data.birthday) {
+      if (typeof data.birthday === 'string') {
+        birthdayISO = data.birthday;
+      } else if (data.birthday instanceof Date) {
+        birthdayISO = data.birthday.toISOString();
+      }
+    }
+
     await setDoc(doc(db, 'users', userId), {
       nom: data.nom,
       prenom: data.prenom,
       email: data.email,
       phone: data.phone,
-      birthday: data.birthday?.toISOString() || null,
+      birthday: birthdayISO,
       planId: data.planId,
       planName: data.planName,
       planPrice: data.planPrice,

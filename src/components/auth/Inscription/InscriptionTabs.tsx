@@ -18,8 +18,8 @@ export function InscriptionTabs() {
     const sessionId = urlParams.get('session_id');
 
     if (sessionId) {
-      // Aller directement à l'étape 3 pour afficher un loading
-      setCurrentStep(3);
+      // Nettoyer l'URL immédiatement pour éviter les re-renders
+      window.history.replaceState({}, '', '/auth/inscription');
       
       // Récupérer le statut de la session
       fetch(`/api/checkout-status?session_id=${sessionId}`)
@@ -31,17 +31,15 @@ export function InscriptionTabs() {
               stripeCustomerId: data.customer_id || '',
               paymentIntentId: data.subscription_id || sessionId,
             });
+            // Aller directement à Step 4
             completeStep(3);
-            
-            // Nettoyer l'URL
-            window.history.replaceState({}, '', '/auth/inscription');
           }
         })
         .catch((error) => {
           console.error('Error checking session status:', error);
         });
     }
-  }, [completeStep, setStep3Data, setCurrentStep]);
+  }, []);
 
   return (
     <div className="w-full space-y-8 my-8">
