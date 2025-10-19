@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { InscriptionData } from '@/types';
 
 interface InscriptionStore {
@@ -34,43 +35,51 @@ const initialData: InscriptionData = {
   stripeCustomerId: '',
 };
 
-export const useInscriptionStore = create<InscriptionStore>((set, get) => ({
-  currentStep: 1,
-  completedSteps: [],
-  maxStepReached: 1, // ⬅️ AJOUTER
-  inscriptionData: initialData,
-  
-  setCurrentStep: (step) => set({ currentStep: step }),
-  
-  completeStep: (step) => set((state) => {
-    if (!state.completedSteps.includes(step)) {
-      return {
-        completedSteps: [...state.completedSteps, step],
-        currentStep: step + 1,
-        maxStepReached: Math.max(state.maxStepReached, step + 1),
-      };
+export const useInscriptionStore = create<InscriptionStore>()(
+  persist(
+    (set, get) => ({
+      currentStep: 1,
+      completedSteps: [],
+      maxStepReached: 1,
+      inscriptionData: initialData,
+      
+      setCurrentStep: (step) => set({ currentStep: step }),
+      
+      completeStep: (step) => set((state) => {
+        if (!state.completedSteps.includes(step)) {
+          return {
+            completedSteps: [...state.completedSteps, step],
+            currentStep: step + 1,
+            maxStepReached: Math.max(state.maxStepReached, step + 1),
+          };
+        }
+        return { currentStep: step + 1 };
+      }),
+      
+      setStep1Data: (data) => set((state) => ({
+        inscriptionData: { ...state.inscriptionData, ...data }
+      })),
+      
+      setStep2Data: (data) => set((state) => ({
+        inscriptionData: { ...state.inscriptionData, ...data }
+      })),
+      
+      setStep3Data: (data) => set((state) => ({
+        inscriptionData: { ...state.inscriptionData, ...data }
+      })),
+      
+      getInscriptionData: () => get().inscriptionData,
+      
+      resetStore: () => set({
+        currentStep: 1,
+        completedSteps: [],
+        maxStepReached: 1,
+        inscriptionData: initialData,
+      }),
+    }),
+    {
+      name: 'inscription-storage',
+      storage: createJSONStorage(() => localStorage),
     }
-    return { currentStep: step + 1 };
-  }),
-  
-  setStep1Data: (data) => set((state) => ({
-    inscriptionData: { ...state.inscriptionData, ...data }
-  })),
-  
-  setStep2Data: (data) => set((state) => ({
-    inscriptionData: { ...state.inscriptionData, ...data }
-  })),
-  
-  setStep3Data: (data) => set((state) => ({
-    inscriptionData: { ...state.inscriptionData, ...data }
-  })),
-  
-  getInscriptionData: () => get().inscriptionData,
-  
-  resetStore: () => set({
-    currentStep: 1,
-    completedSteps: [],
-    maxStepReached: 1,
-    inscriptionData: initialData,
-  }),
-}));
+  )
+);
